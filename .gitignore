@@ -1,0 +1,7 @@
+__init__.py
+__pycache__
+*~
+.env
+.venv
+requirement.txt
+data.db

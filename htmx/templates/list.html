@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta name="htmx-config" content='{"useTemplateFragments":"true"}'>
+  <title>Customer List</title>
+
+  <script src="https://unpkg.com/htmx.org@1.9.10"
+    integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async></script>
+</head>
+
+<body>
+
+  <div id="g_id_onload"
+     data-client_id="831022058239-486gipr6kn8l7a8cb8vqvpllupvlm3du.apps.googleusercontent.com"
+     data-context="signin"
+     data-ux_mode="popup"
+     data-login_uri="http://localhost:8000/api/login"
+     data-auto_prompt="false">
+</div>
+
+<div class="g_id_signin"
+     data-type="standard"
+     data-shape="rectangular"
+     data-theme="outline"
+     data-text="signin_with"
+     data-size="large"
+     data-logo_alignment="left">
+</div>
+
+  <div class="mx-4">
+    <p class="text-2xl font-bold mb-4">Customer List</p>
+
+    <div class="mb-4">
+      <button class="px-3 py-1 bg-red-600 text-white ml-4" hx-get="/htmx/list?skip=0&limit={{ limit }}&reset=True"
+        hx-target="#table-body" hx-swap="innerHTML"> Reset
+      </button>
+
+      <span id="bluebutton">
+        <button class="px-3 py-1 bg-blue-600 text-white ml-4" hx-get="/htmx/list?skip={{ skip_next }}&limit={{ limit }}"
+          hx-target="#table-body" hx-swap="beforeend" hx-trigger="click"> Load More
+        </button>
+      </span>
+
+    </div>
+
+    <table class="min-w-[50%] mb-4">
+      <thead class="border-b text-lg">
+        <tr>
+          <th>id</th>
+          <th>name</th>
+          <th>email</th>
+        </tr>
+      </thead>
+      <tbody class="text-center text-sm" id="table-body">
+        {% for cs in customers %}
+        <tr>
+          <td>{{ cs.id }}</td>
+          <td>{{ cs.name }}</td>
+          <td>{{ cs.email }}</td>
+        </tr>
+        {% endfor %}
+
+      </tbody>
+    </table>
+  </div>
+
+</body>
+
+</html>
