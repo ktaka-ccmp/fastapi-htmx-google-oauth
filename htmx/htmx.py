@@ -65,13 +65,19 @@ async def list(request: Request, hx_request: Optional[str] = Header(None), ds: S
 @router.get("/logout")
 async def logout(request: Request, response: Response, cs: Session = Depends(get_cache)):
 
-    context = {"request": request}
-    response = templates.TemplateResponse("auth.google.html", context)
-    response.headers["HX-Trigger"] = "showLogin"
+    # context = {"request": request}
+    # response = templates.TemplateResponse("auth.google.html", context)
+
+    response = JSONResponse({"message": "Session deleted"})
+
+    response.headers["HX-Trigger"] = "showComponent"
     response.delete_cookie("session_id")
 
     session_id = request.cookies.get("session_id")
-    delete_session(session_id, cs)
+    if session_id:
+        delete_session(session_id, cs)
+    else:
+        print("No session_id found.")
 
     return response
 
@@ -80,8 +86,8 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
     body = await request.body()
     jwt = dict(urllib.parse.parse_qsl(body.decode('utf-8'))).get('credential')
 
-    referer = request.headers.get("Referer")
-    print("##### Referer: " + referer)
+    # referer = request.headers.get("Referer")
+    # print("##### Referer: " + referer)
 
     idinfo = await VerifyToken(jwt)
     if not idinfo:
@@ -100,16 +106,16 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         # context = {"request": request, "session_id": session_id, "username": user.name}
         # response = templates.TemplateResponse("auth.logout.html", context)
 
-        response = RedirectResponse(referer, status_code=status.HTTP_303_SEE_OTHER)    
-        # response = JSONResponse({"Authenticated_as": user.name})
+        # response = RedirectResponse(referer, status_code=status.HTTP_303_SEE_OTHER)
+        response = JSONResponse({"Authenticated_as": user.name})
 
-        response.headers["HX-Trigger"] = "showLogin"
+        # response.headers["HX-Trigger"] = "showComponent"
         response.set_cookie(
             key="session_id",
             value=session_id,
             httponly=True,
-            max_age=1800,
-            expires=1800,
+            max_age=180,
+            expires=180,
         )
         return response
     else:

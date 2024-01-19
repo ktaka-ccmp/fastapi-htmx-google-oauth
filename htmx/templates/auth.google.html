@@ -3,51 +3,43 @@
     <h2>username: {{ username }}</h2>
 </div> -->
 
-<div>
 <script src="https://accounts.google.com/gsi/client" async></script>
 
-<div id="g_id_onload" data-client_id="831022058239-486gipr6kn8l7a8cb8vqvpllupvlm3du.apps.googleusercontent.com"
+<!-- <div id="g_id_onload" data-client_id="831022058239-486gipr6kn8l7a8cb8vqvpllupvlm3du.apps.googleusercontent.com"
     data-context="signin" data-ux_mode="popup" data-login_uri="http://localhost:8000/htmx/login" data-auto_prompt="true">
 </div>
 
 <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with"
     data-size="large" data-logo_alignment="left">
-</div>
+</div> -->
 
 
-<!-- <script>
-    function handleResponse(response) {
-        console.log("Encoded JWT ID token: " + response.credential);
-    }
-
+<script>
     function onSignIn(response) {
         var xhr = new XMLHttpRequest();
         xhr.open('POST', 'http://localhost:8000/htmx/login');
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onload = function () {
             console.log(xhr.responseText);
+            htmx.trigger("#auth_component", "showComponent");
         };
         xhr.send('credential=' + response.credential);
     }
 
-    window.onload = function () {
-        google.accounts.id.initialize({
-            /* global google */
-            client_id: "831022058239-486gipr6kn8l7a8cb8vqvpllupvlm3du.apps.googleusercontent.com",
-            callback: onSignIn,
-            ux_mode: "popup",
-        });
+    google.accounts.id.initialize({
+        /* global google */
+        client_id: "831022058239-486gipr6kn8l7a8cb8vqvpllupvlm3du.apps.googleusercontent.com",
+        callback: onSignIn,
+        ux_mode: "popup",
+    });
 
-        google.accounts.id.renderButton(document.getElementById("signInDiv"), {
-            theme: "outline",
-            size: "large",
-            shape: "circle",
-        });
+    google.accounts.id.renderButton(document.getElementById("signInDiv"), {
+        theme: "outline",
+        size: "large",
+        shape: "circle",
+    });
 
-        google.accounts.id.prompt();
-    };
+    google.accounts.id.prompt();
 </script>
 
-<div id="signInDiv"></div> -->
-
-</div>
+<div id="signInDiv"></div>
