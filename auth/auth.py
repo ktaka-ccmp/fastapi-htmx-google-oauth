@@ -1,6 +1,7 @@
 import secrets
 import urllib.parse
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from data.db import User, UserBase, Sessions
 from data.db import get_db, get_cache
@@ -80,11 +81,14 @@ async def signin(response: Response, form_data: OAuth2PasswordRequestForm = Depe
 oauth2_scheme = OAuth2Cookie(tokenUrl="/api/signin", auto_error=False)
 
 def get_session_by_session_id(session_id: str, cs: Session):
+    print("######Hey get_session_by_session_id is called with: ", session_id, ", cs = ", cs)
     try:
         session=cs.query(Sessions).filter(Sessions.session_id==session_id).first().__dict__
+        print("###### session: ", session)
         session.pop('_sa_instance_state')
         return session
     except:
+        print("###### Exception: ")
         return None
 
 def create_session(user: UserBase, cs: Session):
@@ -118,7 +122,10 @@ async def get_current_user(ds: Session = Depends(get_db), cs: Session = Depends(
     if not session_id:
         return None
 
+    print("######Hey get_current_user is called with: ", session_id, ", cs = ", cs)
+
     session = get_session_by_session_id(session_id, cs)
+    print("######Hey we get session: ", session)
     if not session:
         return None
 
@@ -165,14 +172,16 @@ async def VerifyToken(jwt: str):
     return idinfo
 
 @router.post("/login")
-async def login(request: Request, response: Response, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def login(request: Request, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
     body = await request.body()
-    # jwt = json.loads(body)["credential"]
     jwt = dict(urllib.parse.parse_qsl(body.decode('utf-8'))).get('credential')
     if jwt == None:
         return  Response("Error: No JWT found")
-    print("JWT token: " + jwt)
-    print(pyjwt.decode(jwt, options={"verify_signature": False}))
+    referer = request.headers.get("Referer")
+
+    # print("JWT token: " + jwt)
+    # print("Decoded JWT: " + pyjwt.decode(jwt, options={"verify_signature": False}))
+    print("##### Referer: " + referer)
 
     idinfo = await VerifyToken(jwt)
     if not idinfo:
@@ -187,6 +196,10 @@ async def login(request: Request, response: Response, ds: Session = Depends(get_
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Error: User not exist in User table in DB.")
         user = UserBase(**user_dict)
         session_id = create_session(user, cs)
+
+        # response = RedirectResponse(referer, status_code=status.HTTP_303_SEE_OTHER)    
+        response = JSONResponse({"Authenticated_as": user.name})
+        response.headers["HX-Trigger"] = "showLogin"
         response.set_cookie(
             key="session_id",
             value=session_id,
@@ -194,22 +207,33 @@ async def login(request: Request, response: Response, ds: Session = Depends(get_
             max_age=1800,
             expires=1800,
         )
+        return response
     else:
         return Response("Error: Auth failed")
-    return {"Authenticated_as": user.name}
 
 # @router.get("/logout")
 # async def logout(response: Response, request: Request, cs: Session = Depends(get_cache)):
 #     session_id: str = request.cookies.get("session_id")
 
 @router.get("/logout")
-async def logout(response: Response, cs: Session = Depends(get_cache), session_id: str = Depends(oauth2_scheme)):
+async def logout(request: Request, response: Response, cs: Session = Depends(get_cache), session_id: str = Depends(oauth2_scheme)):
+
+    # content = {"message": "Session deleted"}
+    # headers = {"HX-Trigger": "showLogin"}
+    # response = JSONResponse(content=content, headers=headers)
+    # response.delete_cookie("session_id")
+
+    # referer = request.headers.get("Referer")
+    # response = RedirectResponse(referer, status_code=status.HTTP_303_SEE_OTHER)    
+    # response.headers["HX-Trigger"] = "showLogin"
+    # response.delete_cookie("session_id")
+
+    response = JSONResponse({"message": "Session deleted"})
+    response.headers["HX-Trigger"] = "showLogin"
     response.delete_cookie("session_id")
-    try:
-        delete_session(session_id, cs)
-    except:
-        pass
-    return {"cookie": "deleted"}
+    delete_session(session_id, cs)
+
+    return response
 
 @router.get("/user/")
 async def get_user(user: UserBase = Depends(get_current_active_user)):

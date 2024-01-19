@@ -5,3 +5,4 @@ __pycache__
 .venv
 requirement.txt
 data.db
+cache.db

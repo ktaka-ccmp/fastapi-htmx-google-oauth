@@ -1,0 +1,12 @@
+<div>
+    <h1>Here is the logout button</h1>
+    <h2>session_id: {{ session_id }}</h2>
+</div>
+
+<div>
+    <span class="px-3 py-1 bg-gray-600 text-white ml-4">Authenticated as {{username}} &nbsp;</span>
+    <button class="px-3 py-1 bg-gray-600 text-white ml-4" hx-get="/htmx/logout" hx-trigger="click">Sign Out</button>
+</div>
+
+
+

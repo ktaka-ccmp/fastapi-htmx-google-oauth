@@ -9,27 +9,13 @@
     integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
     crossorigin="anonymous"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://accounts.google.com/gsi/client" async></script>
 </head>
 
 <body>
 
-  <div id="g_id_onload"
-     data-client_id="831022058239-486gipr6kn8l7a8cb8vqvpllupvlm3du.apps.googleusercontent.com"
-     data-context="signin"
-     data-ux_mode="popup"
-     data-login_uri="http://localhost:8000/api/login"
-     data-auto_prompt="false">
-</div>
-
-<div class="g_id_signin"
-     data-type="standard"
-     data-shape="rectangular"
-     data-theme="outline"
-     data-text="signin_with"
-     data-size="large"
-     data-logo_alignment="left">
-</div>
+  <div id="auth_component" hx-get="/htmx/auth_component" hx-target="#auth_component" hx-swap="innerHTML"
+    hx-trigger="load, showLogin from:#auth_component, showLogin from:body">
+  </div>
 
   <div class="mx-4">
     <p class="text-2xl font-bold mb-4">Customer List</p>
