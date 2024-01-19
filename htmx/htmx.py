@@ -27,10 +27,6 @@ async def list(request: Request, skip: int = 0, limit: int = 1, reset: bool = Fa
         skip_next = skip+limit
     context = {"request": request, "skip_next": skip_next, "limit": limit, 'customers': customers}
  
-    print("(skip, limit, reset) = (", skip, limit, reset,")")
-    print("request.query_params:", dict(request.query_params))
-    print("request.headers:", request.headers)
-
     if hx_request:
         if reset:
             return templates.TemplateResponse("list.reset.html", context)

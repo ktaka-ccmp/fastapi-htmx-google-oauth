@@ -3,7 +3,7 @@
 <script>
     function onSignIn(response) {
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', 'http://localhost:8000/api/login');
+        xhr.open('POST', "{{ login_url }}");
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onload = function () {
             console.log(xhr.responseText);
@@ -13,7 +13,7 @@
     }
 
     google.accounts.id.initialize({
-        client_id: "831022058239-486gipr6kn8l7a8cb8vqvpllupvlm3du.apps.googleusercontent.com",
+        client_id: "{{ client_id }}",
         callback: onSignIn,
         ux_mode: "popup",
     });
