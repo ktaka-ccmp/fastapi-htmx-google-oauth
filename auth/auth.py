@@ -227,14 +227,13 @@ async def list(request: Request, hx_request: Optional[str] = Header(None), ds: S
     except:
         print("Exception getting user")
 
-
     client_id = settings.google_oauth2_client_id
     login_url = settings.origin_server + "/api/login"
 
     if hx_request:
         if session_id:
             try:
-                context = {"request": request, "session_id": session_id, "username": user.name}
+                context = {"request": request, "session_id": session_id, "name": user.name, "picture": user.picture, "email": user.email}
                 return templates.TemplateResponse("auth.logout.html", context)
             except:
                 pass

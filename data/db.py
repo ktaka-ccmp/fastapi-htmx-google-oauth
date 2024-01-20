@@ -38,6 +38,7 @@ class User(DataStoreBase):
     disabled = Column('disabled', Boolean, default=False)
     admin = Column('admin', Boolean, default=False)
     password = Column('password', String(254))
+    picture = Column('picture', String(1024))
 
 class Sessions(CacheStoreBase):
     __tablename__ = 'sessions'
@@ -47,7 +48,7 @@ class Sessions(CacheStoreBase):
     name = Column('name', String(30))
 
 # schemas.py
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, HttpUrl
 
 class CustomerBase(BaseModel):
     id: int
@@ -63,6 +64,9 @@ class UserBase(BaseModel):
     disabled: bool
     admin: bool
     password: str | None
+    picture: HttpUrl | None
+    class Config:
+        orm_mode = True
 
 DataStoreBase.metadata.create_all(bind=DataStore)
 CacheStoreBase.metadata.create_all(bind=CacheStore)
