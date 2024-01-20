@@ -1,5 +1,3 @@
-<script src="https://accounts.google.com/gsi/client" async></script>
-
 <script>
     function onSignIn(response) {
         var xhr = new XMLHttpRequest();
@@ -25,7 +23,8 @@
         <!-- type: "icon", -->
     });
 
-    <!-- google.accounts.id.prompt(); -->
+    google.accounts.id.prompt();
+
 </script>
 
-<div id="signInDiv" class="ml-8 mt-2"></div>
+<div id="signInDiv"></div>
