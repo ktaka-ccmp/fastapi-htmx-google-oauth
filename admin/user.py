@@ -24,8 +24,8 @@ def read_user_by_name(name: str, db_session: Session = Depends(get_db)):
     return user
 
 async def create(idinfo: str, db_session: Session):
-    email = idinfo['email']
-    db_user = User(name=email, email=email)
+    print("#### idinfo: ",idinfo)
+    db_user = User(name=idinfo['name'], email=idinfo['email'], picture=idinfo['picture'])
     user = await create_user(db_user, db_session)
     return user
 
@@ -35,7 +35,7 @@ async def create_user(user: UserBase, db_session: Session = Depends(get_db)):
     if db_user:
         return db_user
     if not db_user:
-        user_model = User(name=user.name, email=user.email)
+        user_model = User(name=user.name, email=user.email, picture=user.picture)
         db_session.add(user_model)
         db_session.commit()
         db_session.refresh(user_model)

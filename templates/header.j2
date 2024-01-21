@@ -1,0 +1,18 @@
+<head>
+  <meta name="htmx-config" content='{"useTemplateFragments":"true"}'>
+  <title>{{title}}</title>
+
+  <script src="https://unpkg.com/htmx.org@1.9.10"
+    integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  {# The next line is needed for auth.login.google."js".html to work,
+  i.e. for js api of Sign in with Google, script shoudl be loaded in the <header></header>.
+
+  For Html api the next line is not needed, although dosen't harm anything.
+  The script should be loaded in the auth.login.google."html".html,
+  i.e. should be loaded every time the component file is loaded. #}
+  <script src="https://accounts.google.com/gsi/client" async></script>
+
+</head>

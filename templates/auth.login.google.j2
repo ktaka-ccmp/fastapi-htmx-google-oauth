@@ -1,0 +1,16 @@
+<script>
+    function onSignIn(response) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', "{{ login_url }}");
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function () {
+            console.log(xhr.responseText);
+            htmx.trigger("#auth_component", "showComponent");
+        };
+        xhr.send('credential=' + response.credential);
+    }
+
+</script>
+
+{% include 'auth.login.google.html.j2' %}
+{# {% include 'auth.login.google.js.j2' %} #}

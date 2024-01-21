@@ -1,3 +1,6 @@
+
+<img src=./image/FastAPI-HTMX-Google-OAuth01.gif width="600px">
+
 # Howto run app in this repository.
 
 ## 1. <a name="googleapisetup">Setup OAuth configuration on Google APIs console</a>

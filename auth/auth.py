@@ -1,7 +1,7 @@
 import secrets
 import urllib.parse
-from fastapi import Depends, APIRouter, HTTPException, status, Response, Request
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, Header
+from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
 from data.db import User, UserBase, Sessions
 from data.db import get_db, get_cache
@@ -15,9 +15,11 @@ from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from config import settings
-import jwt as pyjwt
+
+from fastapi.templating import Jinja2Templates
 
 router = APIRouter()
+templates = Jinja2Templates(directory='templates')
 
 class OAuth2Cookie(OAuth2):
     def __init__(
@@ -81,14 +83,11 @@ async def signin(response: Response, form_data: OAuth2PasswordRequestForm = Depe
 oauth2_scheme = OAuth2Cookie(tokenUrl="/api/signin", auto_error=False)
 
 def get_session_by_session_id(session_id: str, cs: Session):
-    print("######Hey get_session_by_session_id is called with: ", session_id, ", cs = ", cs)
     try:
         session=cs.query(Sessions).filter(Sessions.session_id==session_id).first().__dict__
-        print("###### session: ", session)
         session.pop('_sa_instance_state')
         return session
     except:
-        print("###### Exception: ")
         return None
 
 def create_session(user: UserBase, cs: Session):
@@ -115,17 +114,11 @@ def get_user_by_name(name: str, ds: Session):
     print("get_user_by_name -> user: ", user)
     return user
 
-# async def get_current_user(request: Request, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
-#     session_id = request.cookies.get("session_id")
-
 async def get_current_user(ds: Session = Depends(get_db), cs: Session = Depends(get_cache), session_id: str = Depends(oauth2_scheme)):
+
     if not session_id:
         return None
-
-    print("######Hey get_current_user is called with: ", session_id, ", cs = ", cs)
-
     session = get_session_by_session_id(session_id, cs)
-    print("######Hey we get session: ", session)
     if not session:
         return None
 
@@ -173,15 +166,9 @@ async def VerifyToken(jwt: str):
 
 @router.post("/login")
 async def login(request: Request, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+
     body = await request.body()
     jwt = dict(urllib.parse.parse_qsl(body.decode('utf-8'))).get('credential')
-    if jwt == None:
-        return  Response("Error: No JWT found")
-    referer = request.headers.get("Referer")
-
-    # print("JWT token: " + jwt)
-    # print("Decoded JWT: " + pyjwt.decode(jwt, options={"verify_signature": False}))
-    print("##### Referer: " + referer)
 
     idinfo = await VerifyToken(jwt)
     if not idinfo:
@@ -197,41 +184,30 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         user = UserBase(**user_dict)
         session_id = create_session(user, cs)
 
-        # response = RedirectResponse(referer, status_code=status.HTTP_303_SEE_OTHER)    
         response = JSONResponse({"Authenticated_as": user.name})
-        response.headers["HX-Trigger"] = "showLogin"
         response.set_cookie(
             key="session_id",
             value=session_id,
             httponly=True,
-            max_age=1800,
-            expires=1800,
+            max_age=180,
+            expires=180,
         )
         return response
     else:
         return Response("Error: Auth failed")
 
-# @router.get("/logout")
-# async def logout(response: Response, request: Request, cs: Session = Depends(get_cache)):
-#     session_id: str = request.cookies.get("session_id")
-
 @router.get("/logout")
-async def logout(request: Request, response: Response, cs: Session = Depends(get_cache), session_id: str = Depends(oauth2_scheme)):
-
-    # content = {"message": "Session deleted"}
-    # headers = {"HX-Trigger": "showLogin"}
-    # response = JSONResponse(content=content, headers=headers)
-    # response.delete_cookie("session_id")
-
-    # referer = request.headers.get("Referer")
-    # response = RedirectResponse(referer, status_code=status.HTTP_303_SEE_OTHER)    
-    # response.headers["HX-Trigger"] = "showLogin"
-    # response.delete_cookie("session_id")
+async def logout(request: Request, response: Response, cs: Session = Depends(get_cache)):
 
     response = JSONResponse({"message": "Session deleted"})
-    response.headers["HX-Trigger"] = "showLogin"
+    response.headers["HX-Trigger"] = "showComponent"
     response.delete_cookie("session_id")
-    delete_session(session_id, cs)
+
+    session_id = request.cookies.get("session_id")
+    if session_id:
+        delete_session(session_id, cs)
+    else:
+        print("No session_id found.")
 
     return response
 
@@ -241,3 +217,28 @@ async def get_user(user: UserBase = Depends(get_current_active_user)):
         return {"username": user.name, "email": user.email,}
     except:
         return None
+
+@router.get("/auth_component", response_class=HTMLResponse)
+async def list(request: Request, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+    try:
+        session_id = request.cookies.get("session_id")
+        user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+        user = await get_current_active_user(user)
+    except:
+        print("Exception getting user")
+
+    client_id = settings.google_oauth2_client_id
+    login_url = settings.origin_server + "/api/login"
+
+    if hx_request:
+        if session_id:
+            try:
+                context = {"request": request, "session_id": session_id, "name": user.name, "picture": user.picture, "email": user.email}
+                return templates.TemplateResponse("auth.logout.j2", context)
+            except:
+                pass
+        context = {"request": request, "client_id": client_id, "login_url": login_url}
+        return templates.TemplateResponse("auth.login.google.j2", context)
+
+    context = {"request": request, "session_id": session_id}
+    return templates.TemplateResponse("auth.login.google.j2", context)
