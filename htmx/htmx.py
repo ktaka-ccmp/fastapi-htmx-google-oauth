@@ -25,7 +25,7 @@ async def list(request: Request, skip: int = 0, limit: int = 1, reset: bool = Fa
         skip_next = 0
     else:
         skip_next = skip+limit
-    context = {"request": request, "skip_next": skip_next, "limit": limit, 'customers': customers}
+    context = {"request": request, "skip_next": skip_next, "limit": limit, 'customers': customers, "title": "Incremental hx-get demo"}
  
     if hx_request:
         if reset:
