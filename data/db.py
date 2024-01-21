@@ -7,14 +7,14 @@ from sqlalchemy import Boolean
 DATA_STORE_URI = "sqlite:///data/data.db"
 
 DataStore = create_engine(
-    DATA_STORE_URI, connect_args={"check_same_thread": False}, echo=True
+    DATA_STORE_URI, connect_args={"check_same_thread": False}, echo=False
 )
 SessionDATA = sessionmaker(autocommit=False, autoflush=False, bind=DataStore)
 
 CACHE_STORE_URI = "sqlite:///data/cache.db"
 
 CacheStore = create_engine(
-    CACHE_STORE_URI, connect_args={"check_same_thread": False}, echo=True
+    CACHE_STORE_URI, connect_args={"check_same_thread": False}, echo=False
 )
 SessionCACHE = sessionmaker(autocommit=False, autoflush=False, bind=CacheStore)
 
@@ -55,7 +55,7 @@ class CustomerBase(BaseModel):
     name: str
     email: EmailStr
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserBase(BaseModel):
     id: int
@@ -66,7 +66,7 @@ class UserBase(BaseModel):
     password: str | None
     picture: HttpUrl | None
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 DataStoreBase.metadata.create_all(bind=DataStore)
 CacheStoreBase.metadata.create_all(bind=CacheStore)
