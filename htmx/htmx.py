@@ -29,7 +29,7 @@ async def list(request: Request, skip: int = 0, limit: int = 1, reset: bool = Fa
  
     if hx_request:
         if reset:
-            return templates.TemplateResponse("list.reset.html", context)
-        return templates.TemplateResponse("list.tbody.html", context)
+            return templates.TemplateResponse("list.tbody_empty.j2", context)
+        return templates.TemplateResponse("list.tbody.j2", context)
 
-    return templates.TemplateResponse("list.html", context)
+    return templates.TemplateResponse("list.j2", context)

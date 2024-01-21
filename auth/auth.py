@@ -234,11 +234,11 @@ async def list(request: Request, hx_request: Optional[str] = Header(None), ds: S
         if session_id:
             try:
                 context = {"request": request, "session_id": session_id, "name": user.name, "picture": user.picture, "email": user.email}
-                return templates.TemplateResponse("auth.logout.html", context)
+                return templates.TemplateResponse("auth.logout.j2", context)
             except:
                 pass
         context = {"request": request, "client_id": client_id, "login_url": login_url}
-        return templates.TemplateResponse("auth.login.google.html", context)
+        return templates.TemplateResponse("auth.login.google.j2", context)
 
     context = {"request": request, "session_id": session_id}
-    return templates.TemplateResponse("auth.login.google.html", context)
+    return templates.TemplateResponse("auth.login.google.j2", context)

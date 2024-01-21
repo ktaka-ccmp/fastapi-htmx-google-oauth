@@ -1,0 +1,19 @@
+<script>
+    google.accounts.id.initialize({
+        client_id: "{{ client_id }}",
+        callback: onSignIn,
+        ux_mode: "popup",
+    });
+
+    google.accounts.id.renderButton(document.getElementById("signInDiv"), {
+        theme: "outline",
+        size: "large",
+        shape: "circle",
+        // type: "icon",
+    });
+
+    google.accounts.id.prompt();
+
+</script>
+
+<div id="signInDiv"></div>
