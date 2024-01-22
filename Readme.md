@@ -2,7 +2,7 @@
 
 ## What this look like
 
-<img src=./image/FastAPI-HTMX-Google-OAuth01.gif width="600px">
+<img src=./images/FastAPI-HTMX-Google-OAuth01.gif width="600px">
 
 ## Directory structure
 
