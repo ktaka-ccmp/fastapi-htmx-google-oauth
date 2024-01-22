@@ -2,7 +2,7 @@ from config import settings
 from fastapi import Depends, APIRouter, Request
 from sqlalchemy.orm import Session
 from data.db import Sessions, UserBase, get_cache
-from auth.auth import get_current_active_user, get_session_by_session_id, oauth2_scheme
+from auth.auth import get_current_user, get_session_by_session_id
 
 router = APIRouter()
 
@@ -19,7 +19,8 @@ async def env():
         }
 
 @router.get("/me")
-async def dump_users_info(user: UserBase = Depends(get_current_active_user), session_id: str = Depends(oauth2_scheme), cs: Session = Depends(get_cache)):
+async def dump_users_info(request: Request, user: UserBase = Depends(get_current_user), cs: Session = Depends(get_cache)):
+    session_id = request.cookies.get("session_id")
     session = get_session_by_session_id(session_id, cs)
     try:
         return {"user": user, "session": session}

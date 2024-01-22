@@ -16,14 +16,14 @@ app.include_router(
     admin.user.router,
     prefix="/crud",
     tags=["Admin"],
-    dependencies=[Depends(auth.auth.get_current_active_user)],
+    dependencies=[Depends(auth.auth.get_current_user)],
 )
 
 app.include_router(
     admin.debug.router,
     prefix="/debug",
     tags=["Admin"],
-    dependencies=[Depends(auth.auth.get_current_active_user)],
+    dependencies=[Depends(auth.auth.get_current_user)],
 )
 
 app.include_router(
