@@ -8,8 +8,7 @@ from data.db import get_db, get_cache
 from admin.user import create as GetOrCreateUser
 
 from typing import Optional
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2, OAuth2PasswordBearer
-from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
+from fastapi.security import OAuth2PasswordBearer
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
