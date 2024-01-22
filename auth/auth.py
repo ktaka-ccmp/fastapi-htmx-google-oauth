@@ -151,8 +151,8 @@ async def logout(request: Request, response: Response, cs: Session = Depends(get
 
     return response
 
-@router.get("/auth_component", response_class=HTMLResponse)
-async def auth_component(request: Request, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+@router.get("/hx_auth_component", response_class=HTMLResponse)
+async def hx_auth_component(request: Request, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
 
     if not hx_request:
         raise HTTPException(
