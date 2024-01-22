@@ -89,8 +89,8 @@ async def get_current_user(session_id: str, ds: Session = Depends(get_db), cs: S
     return user
 
 @router.get("/is_authenticated")
-async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache), dummy: str = Depends(oauth2_scheme)):
-# Unsolved problem: The dummy dependency prohibit secret page access even for an authentcated user,
+async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+# Unsolved problem: The dummy dependency prohibit secret page access even for an authenticated user,
 # while it ise needed for Swagger UI to properly show the lock icon.
 # async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache), dummy: str = Depends(oauth2_scheme)):
     user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
