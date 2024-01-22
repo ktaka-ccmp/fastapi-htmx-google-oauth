@@ -164,14 +164,16 @@ async def hx_auth_component(request: Request, hx_request: Optional[str] = Header
     try:
         session_id = request.cookies.get("session_id")
         user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
-        context = {"request": request, "session_id": session_id, "name": user.name, "picture": user.picture, "email": user.email}
+        logout_url = settings.origin_server + "/auth/logout"
+        context = {"request": request, "session_id": session_id, "logout_url":logout_url,
+                   "name": user.name, "picture": user.picture, "email": user.email}
         return templates.TemplateResponse("auth.logout.j2", context)
     except:
         print("User not logged-in.")
 
     # For unauthenticated users, return the login component.
     client_id = settings.google_oauth2_client_id
-    login_url = settings.origin_server + "/api/login"
+    login_url = settings.origin_server + "/auth/login"
 
     context = {"request": request, "client_id": client_id, "login_url": login_url}
     return templates.TemplateResponse("auth.login.google.j2", context)

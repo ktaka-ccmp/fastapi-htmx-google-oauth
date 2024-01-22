@@ -8,8 +8,8 @@ app = FastAPI()
 
 app.include_router(
     auth.auth.router,
-    prefix="/api",
-    tags=["Authentication"],
+    prefix="/auth",
+    tags=["Auth"],
 )
 
 app.include_router(
