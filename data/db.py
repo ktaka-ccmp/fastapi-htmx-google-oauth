@@ -45,7 +45,7 @@ class Sessions(CacheStoreBase):
     id = Column('id', Integer, primary_key = True, autoincrement = True)
     session_id = Column('session_id', String(64))
     user_id = Column('user_id', Integer)
-    name = Column('name', String(30))
+    email = Column('email', String(254))
 
 # schemas.py
 from pydantic import BaseModel, EmailStr, HttpUrl

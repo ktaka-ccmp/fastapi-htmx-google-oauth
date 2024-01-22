@@ -1,7 +1,8 @@
 from config import settings
-from fastapi import Depends, APIRouter
+from fastapi import Depends, APIRouter, Request
 from sqlalchemy.orm import Session
-from data.db import get_cache, Sessions
+from data.db import Sessions, UserBase, get_cache
+from auth.auth import get_current_user, get_session_by_session_id
 
 router = APIRouter()
 
@@ -16,3 +17,18 @@ async def env():
         "origin_server": settings.origin_server,
         "google_oauth2_client_id": settings.google_oauth2_client_id,
         }
+
+@router.get("/me")
+async def dump_users_info(request: Request, user: UserBase = Depends(get_current_user), cs: Session = Depends(get_cache)):
+    session_id = request.cookies.get("session_id")
+    session = get_session_by_session_id(session_id, cs)
+    try:
+        return {"user": user, "session": session}
+    except:
+        return None
+
+@router.get("/debug_headers")
+async def debug_headers(request: Request):
+    headers = request.headers
+    print("Headers: ", headers)
+    return{"Headers": headers}

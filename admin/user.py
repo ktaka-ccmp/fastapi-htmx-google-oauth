@@ -1,7 +1,6 @@
 from fastapi import Depends, APIRouter, HTTPException
 from sqlalchemy.orm import Session
-from data.db import User, UserBase
-from data.db import get_db
+from data.db import User, UserBase, get_db
 
 router = APIRouter()
 
@@ -14,6 +13,12 @@ def get_user_by_email(db_session: Session, email: str):
 def get_user_by_id(db_session: Session, user_id: int):
     return db_session.query(User).filter(User.id==user_id).first()
 
+async def create(idinfo: str, db_session: Session):
+    print("#### idinfo: ",idinfo)
+    db_user = User(name=idinfo['name'], email=idinfo['email'], picture=idinfo['picture'])
+    user = await create_user(db_user, db_session)
+    return user
+
 @router.get("/users/")
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return db.query(User).offset(skip).limit(limit).all()
@@ -21,12 +26,6 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 @router.get("/user/{name}")
 def read_user_by_name(name: str, db_session: Session = Depends(get_db)):
     user = get_user_by_name(db_session, name)
-    return user
-
-async def create(idinfo: str, db_session: Session):
-    print("#### idinfo: ",idinfo)
-    db_user = User(name=idinfo['name'], email=idinfo['email'], picture=idinfo['picture'])
-    user = await create_user(db_user, db_session)
     return user
 
 @router.post("/user/")
