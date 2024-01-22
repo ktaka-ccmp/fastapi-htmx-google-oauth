@@ -1,5 +1,41 @@
+# FastAPI + HTMX with Sign in with Google
+
+## What this look like
 
 <img src=./image/FastAPI-HTMX-Google-OAuth01.gif width="600px">
+
+## Directory structure
+
+```
+.
+├── Readme.md
+├── admin
+│   ├── debug.py
+│   └── user.py
+├── auth
+│   └── auth.py
+├── config.py
+├── data
+│   ├── cache.db
+│   ├── create_data.sh
+│   ├── data.db
+│   └── db.py
+├── htmx
+│   └── htmx.py
+├── images
+│   └── FastAPI-HTMX-Google-OAuth01.gif
+├── main.py
+└── templates
+    ├── auth.j2
+    ├── auth.login.google.html.j2
+    ├── auth.login.google.j2
+    ├── auth.login.google.js.j2
+    ├── auth.logout.j2
+    ├── header.j2
+    ├── list.j2
+    ├── list.tbody.j2
+    └── list.tbody_empty.j2
+```
 
 # Howto run app in this repository.
 
