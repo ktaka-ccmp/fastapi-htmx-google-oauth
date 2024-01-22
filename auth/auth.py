@@ -20,31 +20,6 @@ from fastapi.templating import Jinja2Templates
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
 
-class OAuth2Cookie(OAuth2):
-    def __init__(
-        self,
-        tokenUrl: str,
-        scheme_name: str = None,
-        scopes: dict = None,
-        auto_error: bool = True,
-    ):
-        if not scopes:
-            scopes = {}
-        flows = OAuthFlowsModel(password={"tokenUrl": tokenUrl, "scopes": scopes})
-        super().__init__(flows=flows, scheme_name=scheme_name, auto_error=auto_error)
-
-    async def __call__(self, request: Request) -> Optional[str]:
-        session_id: str = request.cookies.get("session_id")
-        if not session_id:
-            if self.auto_error:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, detail="Not authenticated"
-                )
-            else:
-                return None
-        return session_id
-
-# oauth2_scheme = OAuth2Cookie(tokenUrl="/api/signin", auto_error=False)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def get_session_by_session_id(session_id: str, cs: Session):
@@ -177,15 +152,8 @@ async def logout(request: Request, response: Response, cs: Session = Depends(get
 
     return response
 
-# @router.get("/user/")
-# async def get_user(user: UserBase = Depends(get_current_active_user)):
-#     try:
-#         return {"username": user.name, "email": user.email,}
-#     except:
-#         return None
-
 @router.get("/auth_component", response_class=HTMLResponse)
-async def list(request: Request, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def auth_component(request: Request, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
 
     if not hx_request:
         raise HTTPException(
