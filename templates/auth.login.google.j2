@@ -4,7 +4,8 @@
         xhr.open('POST', "{{ login_url }}");
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onload = function () {
-            console.log(xhr.responseText);
+            {# htmx.logAll(); #}
+            console.log("Response from {{ login_url }}: ", xhr.responseText);
             htmx.trigger("#auth_component", "showComponent");
         };
         xhr.send('credential=' + response.credential);
