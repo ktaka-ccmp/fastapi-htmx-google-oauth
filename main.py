@@ -1,35 +1,35 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-import admin.debug, admin.user, auth.auth
+import admin.debug, admin.user, admin.auth
 import htmx.htmx
 
 app = FastAPI()
 
 app.include_router(
-    auth.auth.router,
+    htmx.htmx.router,
+    prefix="/htmx",
+    tags=["htmx"],
+)
+
+app.include_router(
+    admin.auth.router,
     prefix="/auth",
     tags=["Auth"],
 )
 
 app.include_router(
-    admin.user.router,
-    prefix="/crud",
-    tags=["Admin"],
-    dependencies=[Depends(auth.auth.get_current_user)],
-)
-
-app.include_router(
     admin.debug.router,
     prefix="/debug",
-    tags=["Admin"],
-    dependencies=[Depends(auth.auth.get_current_user)],
+    tags=["Debug"],
+    dependencies=[Depends(admin.auth.get_current_user)],
 )
 
 app.include_router(
-    htmx.htmx.router,
-    prefix="/htmx",
-    tags=["htmx"],
+    admin.user.router,
+    prefix="/crud",
+    tags=["CRUD"],
+    dependencies=[Depends(admin.auth.get_current_user)],
 )
 
 origins = [
