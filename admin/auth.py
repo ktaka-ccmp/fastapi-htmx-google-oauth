@@ -176,8 +176,8 @@ async def logout(request: Request, response: Response, cs: Session = Depends(get
 
     return response
 
-@router.get("/hx_auth_component", response_class=HTMLResponse)
-async def hx_auth_component(request: Request, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+@router.get("/auth_navbar", response_class=HTMLResponse)
+async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
 
     if not hx_request:
         raise HTTPException(
@@ -190,15 +190,18 @@ async def hx_auth_component(request: Request, hx_request: Optional[str] = Header
         session_id = request.cookies.get("session_id")
         user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
         logout_url = settings.origin_server + "/auth/logout"
-        context = {"request": request, "session_id": session_id, "logout_url":logout_url,
+        icon_url = settings.origin_server + "/htmx/logout.png"
+
+        context = {"request": request, "session_id": session_id, "logout_url":logout_url, "icon_url": icon_url,
                    "name": user.name, "picture": user.picture, "email": user.email}
-        return templates.TemplateResponse("auth.menu.logout.j2", context)
+        return templates.TemplateResponse("auth_navbar.logout.j2", context)
     except:
         print("User not logged-in.")
 
     # For unauthenticated users, return the menu.login component.
     client_id = settings.google_oauth2_client_id
     login_url = settings.origin_server + "/auth/login"
+    icon_url = settings.origin_server + "/htmx/icon.png"
 
-    context = {"request": request, "client_id": client_id, "login_url": login_url}
-    return templates.TemplateResponse("auth.menu.login.j2", context)
+    context = {"request": request, "client_id": client_id, "login_url": login_url, "icon_url": icon_url}
+    return templates.TemplateResponse("auth_navbar.login.j2", context)
