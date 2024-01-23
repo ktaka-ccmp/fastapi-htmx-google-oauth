@@ -1,0 +1,82 @@
+{% include 'auth_navbar.login.callback.j2' %}
+
+{# {% include 'auth_navbar.login.html.j2' %} #}
+{# {% include 'auth_navbar.login.js.j2' %} #}
+
+<nav class="navbar navbar-expand-lg bg-body-tertiary rounded" aria-label="menu.logout">
+  <div class="container">
+
+    {# <a class="navbar-brand" href="#">
+      <i class="bi bi-person-circle" style="font-size: 2.65rem; color: darkcyan;"></i>
+    </a> #}
+
+    <a class="navbar-brand" href="#">
+      <img class="rounded-circle" src="{{icon_url}}" alt="annonymous user" name="annonymous user"
+        style="width:4rem;height:4rem;border-radius:4rem">
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#MyNavbar"
+      aria-controls="MyNavbar" aria-expanded\="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="MyNavbar">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <button hx-get="/htmx/content" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+            type="button" class="btn d-flex align-items-center">
+            Top</button>
+        </li>
+        <li>
+          <button hx-get="/htmx/content.list" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+            type="button" class="btn d-flex align-items-center">
+            hx-get demo
+          </button>
+        </li>
+      </ul>
+
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li>
+        
+          <span class="d-inline-block" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"
+            data-bs-content="Disabled">
+            <button hx-get="/htmx/content.secret1" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+              type="button" class="btn d-flex align-items-center border-0" disabled>
+              Secret#1</button>
+          </span>
+        </li>
+        <li>
+          <span class="d-inline-block" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"
+            data-bs-content="Active but 401 Unauthorized is returned">
+            <button hx-get="/htmx/content.secret2" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+              type="button" class="btn d-flex align-items-center border-0">
+              Secret#2</button>
+          </span>
+        </li>
+      </ul>
+
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        {% include 'auth_navbar.login.html.j2' %}
+        {# {% include 'auth_navbar.login.js.j2' %} #}
+      </ul>
+
+    </div>
+
+  </div>
+</nav>
+
+<script type="text/javascript">
+  const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
+  const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
+</script>
+
+
+<style>
+  .navbar-toggler,
+  .navbar-toggler:active,
+  .navbar-toggler:focus {
+    box-shadow: none;
+    border: none;
+    outline: none;
+  }
+</style>

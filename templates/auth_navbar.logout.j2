@@ -1,0 +1,61 @@
+<nav class="navbar navbar-expand-lg bg-body-tertiary rounded" aria-label="menu.login">
+    <div class="container">
+
+        <a class="navbar-brand" href="#">
+            <img class="rounded-circle" src="{{picture}}" alt="{{name}}" name="{{name}}"
+                style="width:4rem;height:4rem;border-radius:4rem">
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#MyNavbar"
+            aria-controls="MyNavbar" aria-expanded\="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="MyNavbar">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <button hx-get="/htmx/content" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+                        type="button" class="btn d-flex align-items-center">
+                        Top</button>
+                </li>
+                <li>
+                    <button hx-get="/htmx/content.list" hx-trigger="click" hx-target="#content_section"
+                        hx-swap="outerHTML" type="button" class="btn d-flex align-items-center">
+                        hx-get demo
+                    </button>
+                </li>
+            </ul>
+
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li>
+                    <button hx-get="/htmx/content.secret1" hx-trigger="click" hx-target="#content_section"
+                        hx-swap="outerHTML" type="button" class="btn d-flex align-items-center">
+                        Secret#1</button>
+                </li>
+                <li>
+                    <button hx-get="/htmx/content.secret2" hx-trigger="click" hx-target="#content_section"
+                        hx-swap="outerHTML" type="button" class="btn d-flex align-items-center">
+                        Secret#2</button>
+                </li>
+            </ul>
+
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <div hx-get="{{logout_url}}" hx-trigger="click" hx-swap="none">
+                    <img class="rounded-circle" src="{{icon_url}}" alt="logout" name="logout"
+                        style="width:2rem;height:2rem;border-radius:2rem">
+                </div>
+            </ul>
+
+        </div>
+    </div>
+</nav>
+
+<style>
+    .navbar-toggler,
+    .navbar-toggler:active,
+    .navbar-toggler:focus {
+        box-shadow: none;
+        border: none;
+        outline: none;
+    }
+</style>
