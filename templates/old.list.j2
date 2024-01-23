@@ -11,12 +11,12 @@
     <p class="text-2xl font-bold mb-4">{{title}}</p>
 
     <div class="mb-4">
-      <button class="px-3 py-1 bg-red-600 text-white ml-4" hx-get="/htmx/list?skip=0&limit={{ limit }}&reset=True"
-        hx-target="#table-body" hx-swap="innerHTML"> Reset
+      <button class="px-3 py-1 bg-red-600 text-white ml-4" hx-get="/htmx/hx_list?skip=0&limit={{ limit }}&reset=True"
+        hx-target="#table-body" hx-swap="innerHTML" hx-trigger="click"> Reset
       </button>
 
       <span id="bluebutton">
-        <button class="px-3 py-1 bg-blue-600 text-white ml-4" hx-get="/htmx/list?skip={{ skip_next }}&limit={{ limit }}"
+        <button class="px-3 py-1 bg-blue-600 text-white ml-4" hx-get="/htmx/hx_list?skip={{ skip_next }}&limit={{ limit }}"
           hx-target="#table-body" hx-swap="beforeend" hx-trigger="click"> Load More
         </button>
       </span>

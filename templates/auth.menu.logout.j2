@@ -1,0 +1,37 @@
+<div class="group">
+    <div class="flex items-center gap-4">
+        <img class="ml-2 w-10 h-10 rounded-full cursor-pointer" src="{{picture}}" alt="{{name}}" name="{{name}}">
+        <div class="font-medium dark:text-white">
+            <div class="text-sm text-gray-900 dark:text-gray-400">Hey {{name}} !</div>
+            {# <div class="text-sm text-gray-500 dark:text-gray-400">{{email}}</div> #}
+        </div>
+    </div>
+    <div class="absolute w-50 origin-top-left bg-white divide-y divide-gray-100 
+        rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300">
+        <div class="py-1">
+            <ul>
+                <li>
+                    <button hx-get="/htmx/spa.content" hx-trigger="click" hx-target="#content_section"
+                        hx-swap="outerHTML" class="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-100">Return to
+                        Top</button>
+                </li>
+                <li>
+                    <button hx-get="/htmx/secret1" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+                        class="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-100">Secret Page #1</button>
+                </li>
+                <li>
+                    <button hx-get="/htmx/secret2" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+                        class="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-100">Secret Page #2</button>
+                </li>
+                <li>
+                    <button hx-get="/htmx/list.content" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+                        class="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-100">Incremental hx-get demo</button>
+                </li>
+            </ul>
+        </div>
+        <div class="py-1">
+            <button hx-get="{{logout_url}}" hx-trigger="click"
+                class="block px-3 py-2 text-sm text-gray-800 hover:bg-gray-100">Sign Out</button>
+        </div>
+    </div>
+</div>

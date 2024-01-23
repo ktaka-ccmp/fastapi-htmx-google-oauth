@@ -2,7 +2,7 @@ from config import settings
 from fastapi import Depends, APIRouter, Request
 from sqlalchemy.orm import Session
 from data.db import Sessions, UserBase, get_cache
-from auth.auth import get_current_user, get_session_by_session_id
+from admin.auth import get_current_user, get_session_by_session_id
 
 router = APIRouter()
 
