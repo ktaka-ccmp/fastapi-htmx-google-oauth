@@ -10,7 +10,8 @@
         </div>
     </div>
     <div class="absolute w-50 origin-top-left bg-white divide-y divide-gray-100 
-        rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300">
+        rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible 
+        group-focus:opacity-0 transition duration-1000 ">
         <div class="py-1">
             <ul>
                 <li>
@@ -29,3 +30,36 @@
         </div>
     </div>
 </div>
+
+<div class="dropdown">
+  <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Dropdown button
+  </button>
+  <ul class="dropdown-menu">
+    <li><a class="dropdown-item" href="#">Action</a></li>
+    <li><a class="dropdown-item" href="#">Another action</a></li>
+    <li><a class="dropdown-item" href="#">Something else here</a></li>
+  </ul>
+</div>
+
+{# <style>
+.menu:before {
+    content: "\2630 \a0 Menu"; 
+}
+
+.menu:focus .menu-dropdown { opacity:1;  }
+
+.menu-dropdown {
+    opacity: 0;
+}
+
+</style>
+
+<div tabindex="0" class="menu">
+    <div class="menu-dropdown">
+        <a href="javascript:alert('Dropdown 1')">Dropdown 1</a>
+        <a href="javascript:alert('Dropdown 2')">Dropdown 2</a>
+        <a href="javascript:alert('Dropdown 3')">Dropdown 3</a>
+        <a href="javascript:alert('No Javascript')">No Javascript</a>
+    </div>
+</div> #}
