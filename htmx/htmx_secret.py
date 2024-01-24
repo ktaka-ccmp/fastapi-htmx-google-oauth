@@ -2,6 +2,7 @@ from typing import Optional, Annotated
 from fastapi import APIRouter, Request, HTTPException, status, Header, Cookie
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from config import settings
 
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
@@ -14,7 +15,8 @@ async def content_secret1(request: Request, hx_request: Optional[str] = Header(N
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only HX request is allowed to this end point."
             )
-    context = {"request": request, "title": "You've reached Secret Page #1 !"}
+    img_url = settings.origin_server + "/img/secret1.png"
+    context = {"request": request, "title": "Oops, my secret's been revealed!", "img_url": img_url}
     return templates.TemplateResponse("content.secret.j2", context)
 
 @router.get("/content.secret2", response_class=HTMLResponse)
@@ -24,5 +26,6 @@ async def content_secret2(request: Request, hx_request: Optional[str] = Header(N
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only HX request is allowed to this end point."
             )
-    context = {"request": request, "title": "You've reached Secret Page #2 !"}
+    img_url = settings.origin_server + "/img/secret2.png"
+    context = {"request": request, "title": "Believe it or not, it's absolutely not me!", "img_url": img_url}
     return templates.TemplateResponse("content.secret.j2", context)

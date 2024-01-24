@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from admin import debug, user, auth
 from htmx import htmx, htmx_secret
+from images import image
 
 app = FastAPI()
 
@@ -17,6 +18,12 @@ app.include_router(
     prefix="/htmx",
     tags=["htmx"],
     dependencies=[Depends(auth.is_authenticated)],
+)
+
+app.include_router(
+    image.router,
+    prefix="/img",
+    tags=["Images"],
 )
 
 app.include_router(
