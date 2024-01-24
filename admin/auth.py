@@ -190,7 +190,7 @@ async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None)
         session_id = request.cookies.get("session_id")
         user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
         logout_url = settings.origin_server + "/auth/logout"
-        icon_url = settings.origin_server + "/htmx/logout.png"
+        icon_url = settings.origin_server + "/img/logout.png"
 
         context = {"request": request, "session_id": session_id, "logout_url":logout_url, "icon_url": icon_url,
                    "name": user.name, "picture": user.picture, "email": user.email}
@@ -201,7 +201,7 @@ async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None)
     # For unauthenticated users, return the menu.login component.
     client_id = settings.google_oauth2_client_id
     login_url = settings.origin_server + "/auth/login"
-    icon_url = settings.origin_server + "/htmx/icon.png"
+    icon_url = settings.origin_server + "/img/icon.png"
 
     context = {"request": request, "client_id": client_id, "login_url": login_url, "icon_url": icon_url}
     return templates.TemplateResponse("auth_navbar.login.j2", context)

@@ -54,11 +54,12 @@ def get_customer_table_context(request, skip, limit, reset, db):
     context = {"request": request, "skip_next": skip_next, "limit": limit, 'customers': customers, "title": "Incremental hx-get demo"}
     return context
 
-
-@router.get("/icon.png")
-async def main():
-    return FileResponse("images/unknown-person-icon.png")
-
-@router.get("/logout.png")
-async def main():
-    return FileResponse("images/door-check-out-icon.png")
+@router.get("/content.error", response_class=HTMLResponse)
+async def content_error(request: Request, hx_request: Optional[str] = Header(None)):
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point."
+            )
+    context = {"request": request, "message": "Login status changed"}
+    return templates.TemplateResponse("content.error.j2", context)
