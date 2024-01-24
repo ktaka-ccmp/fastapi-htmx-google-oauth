@@ -40,7 +40,7 @@
             </ul>
 
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <div hx-get="{{logout_url}}" hx-trigger="click" hx-swap="none">
+                <div hx-get="{{logout_url}}" hx-trigger="click" hx-target="#content_section" hx-swap="innerHTML">
                     <img class="rounded-circle" src="{{icon_url}}" alt="logout" name="logout"
                         style="width:2rem;height:2rem;border-radius:2rem">
                 </div>

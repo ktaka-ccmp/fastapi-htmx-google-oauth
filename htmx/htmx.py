@@ -47,12 +47,12 @@ async def content_list_tbody(request: Request, skip: int = 0, limit: int = 1, hx
     return templates.TemplateResponse("content.list.tbody.j2", context)
 
 # HTMX Login status change
-@router.get("/content.error", response_class=HTMLResponse)
-async def content_error(request: Request, hx_request: Optional[str] = Header(None)):
-    if not hx_request:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only HX request is allowed to this end point."
-            )
-    context = {"request": request, "message": "Login status changed"}
-    return templates.TemplateResponse("content.error.j2", context)
+# @router.get("/content.error", response_class=HTMLResponse)
+# async def content_error(request: Request, hx_request: Optional[str] = Header(None)):
+#     if not hx_request:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail="Only HX request is allowed to this end point."
+#             )
+#     context = {"request": request, "message": "Login status changed"}
+#     return templates.TemplateResponse("content.error.j2", context)

@@ -161,19 +161,39 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
     else:
         return Response("Error: Auth failed")
 
-@router.get("/logout")
-async def logout(request: Request, response: Response, cs: Session = Depends(get_cache)):
+# # @router.get("/logout")
+# async def logout(request: Request, response: Response, cs: Session = Depends(get_cache)):
 
-    response = JSONResponse({"message": "Session deleted"})
+#     response = JSONResponse({"message": "Session deleted"})
+#     response.headers["HX-Trigger"] = "showComponent"
+#     response.delete_cookie("session_id")
+
+#     session_id = request.cookies.get("session_id")
+#     if session_id:
+#         delete_session(session_id, cs)
+#     else:
+#         print("No session_id found.")
+
+#     return response
+
+@router.get("/logout", response_class=HTMLResponse)
+async def logout2(request: Request, response: Response, hx_request: Optional[str] = Header(None), cs: Session = Depends(get_cache)):
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point."
+            )
+
+    context = {"request": request, "message": "User logged out"}
+    response = templates.TemplateResponse("content.error.j2", context)
     response.headers["HX-Trigger"] = "showComponent"
-    response.delete_cookie("session_id")
+    response.delete_cookie("session_id") # delete key="session_id" from cookie of response
 
-    session_id = request.cookies.get("session_id")
+    session_id = request.cookies.get("session_id") # get session_id from cookie of request
     if session_id:
         delete_session(session_id, cs)
     else:
         print("No session_id found.")
-
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
