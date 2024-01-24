@@ -1,38 +1,38 @@
-<div class="container" id="content_section">
-  <h2>{{title}}</h2>
+<p>
+<h2>{{title}}</h2>
+</p>
 
-  <div>
-    <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?skip=0&limit={{ limit }}&reset=True" hx-target="#table-body"
-      hx-swap="innerHTML" hx-trigger="click"> Reset
+<div>
+  <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?skip=0&limit={{ limit }}&reset=True"
+    hx-target="#table-body" hx-swap="innerHTML" hx-trigger="click"> Reset
+  </button>
+
+  <span id="bluebutton">
+    <button class="btn btn-light" hx-get="/htmx/content.list.tbody?skip={{ skip_next }}&limit={{ limit }}"
+      hx-target="#table-body" hx-swap="beforeend" hx-trigger="click"> Load More
     </button>
+  </span>
 
-    <span id="bluebutton">
-      <button class="btn btn-light" hx-get="/htmx/content.list.tbody?skip={{ skip_next }}&limit={{ limit }}"
-        hx-target="#table-body" hx-swap="beforeend" hx-trigger="click"> Load More
-      </button>
-    </span>
+</div>
 
-  </div>
+<div class="container bd-example">
+  <table class="table table-striped table-hover">
+    <thead>
+      <tr>
+        <th>id</th>
+        <th>name</th>
+        <th>email</th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+      {% for cs in customers %}
+      <tr>
+        <td>{{ cs.id }}</td>
+        <td>{{ cs.name }}</td>
+        <td>{{ cs.email }}</td>
+      </tr>
+      {% endfor %}
 
-  <div class="container bd-example">
-    <table class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>id</th>
-          <th>name</th>
-          <th>email</th>
-        </tr>
-      </thead>
-      <tbody id="table-body">
-        {% for cs in customers %}
-        <tr>
-          <td>{{ cs.id }}</td>
-          <td>{{ cs.name }}</td>
-          <td>{{ cs.email }}</td>
-        </tr>
-        {% endfor %}
-
-      </tbody>
-    </table>
-  </div>
+    </tbody>
+  </table>
 </div>

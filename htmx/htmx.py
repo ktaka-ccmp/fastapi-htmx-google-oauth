@@ -11,17 +11,17 @@ templates = Jinja2Templates(directory='templates')
 
 @router.get("/spa", response_class=HTMLResponse)
 async def spa(request: Request):
-    context = {"request": request, "title": "Spa Top Page"}
+    context = {"request": request}
     return templates.TemplateResponse("spa.j2", context)
 
-@router.get("/content", response_class=HTMLResponse)
+@router.get("/content.top", response_class=HTMLResponse)
 async def spa_content(request: Request, hx_request: Optional[str] = Header(None)):
     if not hx_request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only HX request is allowed to this end point."
             )
-    context = {"request": request, "title": "Spa Top Page"}
+    context = {"request": request, "title": "Htmx Spa Top"}
     return templates.TemplateResponse("content.j2", context)
 
 # HTMX Response function

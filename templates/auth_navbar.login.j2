@@ -23,12 +23,12 @@
     <div class="collapse navbar-collapse" id="MyNavbar">
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         <li class="nav-item">
-          <button hx-get="/htmx/content" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+          <button hx-get="/htmx/content.top" hx-trigger="click" hx-target="#content_section" hx-swap="innerHTML"
             type="button" class="btn d-flex align-items-center">
             Top</button>
         </li>
         <li>
-          <button hx-get="/htmx/content.list" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+          <button hx-get="/htmx/content.list" hx-trigger="click" hx-target="#content_section" hx-swap="innerHTML"
             type="button" class="btn d-flex align-items-center">
             hx-get demo
           </button>
@@ -40,7 +40,7 @@
         
           <span class="d-inline-block" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"
             data-bs-content="Disabled">
-            <button hx-get="/htmx/content.secret1" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+            <button hx-get="/htmx/content.secret1" hx-trigger="click" hx-target="#content_section" hx-swap="innerHTML"
               type="button" class="btn d-flex align-items-center border-0" disabled>
               Secret#1</button>
           </span>
@@ -48,7 +48,7 @@
         <li>
           <span class="d-inline-block" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"
             data-bs-content="Active but 401 Unauthorized is returned">
-            <button hx-get="/htmx/content.secret2" hx-trigger="click" hx-target="#content_section" hx-swap="outerHTML"
+            <button hx-get="/htmx/content.secret2" hx-trigger="click" hx-target="#content_section" hx-swap="innerHTML"
               type="button" class="btn d-flex align-items-center border-0">
               Secret#2</button>
           </span>
