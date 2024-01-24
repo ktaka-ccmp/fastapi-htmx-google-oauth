@@ -11,3 +11,15 @@
     hx-target="#table-body" hx-swap="beforeend" hx-trigger="click"> Load More
   </button>
 </span>
+
+<span hx-swap-oob="innerHTML:#skip">
+  <div>
+    skip = {{skip_next - limit}},
+  </div>
+</span>
+
+<span hx-swap-oob="innerHTML:#skip_next">
+  <div>
+    skip_next = {{skip_next}},
+  </div>
+</span>
