@@ -22,7 +22,7 @@ async def spa_content(request: Request, hx_request: Optional[str] = Header(None)
             detail="Only HX request is allowed to this end point."
             )
     context = {"request": request, "title": "Htmx Spa Top"}
-    return templates.TemplateResponse("content.j2", context)
+    return templates.TemplateResponse("content.top.j2", context)
 
 # HTMX Response function
 @router.get("/content.list.tbody", response_class=HTMLResponse)
