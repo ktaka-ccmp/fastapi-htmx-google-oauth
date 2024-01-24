@@ -3,16 +3,7 @@
 </p>
 
 <div>
-  <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?limit={{ limit }}" hx-target="#table-body"
-    hx-swap="innerHTML" hx-trigger="click"> Reset
-  </button>
-
-  <span id="bluebutton">
-    <button class="btn btn-light" hx-get="/htmx/content.list.tbody?skip={{ skip_next }}&limit={{ limit }}"
-      hx-target="#table-body" hx-swap="beforeend" hx-trigger="load, click"> Load More
-    </button>
-  </span>
-
+  Counters are updated by hx-swap-oob. Yes, this is so cool!
   <span id="skip">
     <div>
       skip = {{skip_next - limit}},
@@ -24,7 +15,18 @@
       skip_next = {{skip_next}},
     </div>
   </span>
+</div>
+<p></p>
+<div>
+  <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?limit={{ limit }}" hx-target="#table-body"
+    hx-swap="innerHTML" hx-trigger="click"> Reset
+  </button>
 
+  <span id="bluebutton">
+    <button class="btn btn-light" hx-get="/htmx/content.list.tbody?skip={{ skip_next }}&limit={{ limit }}"
+      hx-target="#table-body" hx-swap="beforeend" hx-trigger="load, click"> Load More
+    </button>
+  </span>
 </div>
 
 <div class="container bd-example">
