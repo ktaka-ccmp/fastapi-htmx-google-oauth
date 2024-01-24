@@ -3,13 +3,13 @@
 </p>
 
 <div>
-  <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?skip=0&limit={{ limit }}&reset=True"
+  <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?limit={{ limit }}"
     hx-target="#table-body" hx-swap="innerHTML" hx-trigger="click"> Reset
   </button>
 
   <span id="bluebutton">
     <button class="btn btn-light" hx-get="/htmx/content.list.tbody?skip={{ skip_next }}&limit={{ limit }}"
-      hx-target="#table-body" hx-swap="beforeend" hx-trigger="click"> Load More
+      hx-target="#table-body" hx-swap="beforeend" hx-trigger="load, click"> Load More
     </button>
   </span>
 
@@ -25,14 +25,6 @@
       </tr>
     </thead>
     <tbody id="table-body">
-      {% for cs in customers %}
-      <tr>
-        <td>{{ cs.id }}</td>
-        <td>{{ cs.name }}</td>
-        <td>{{ cs.email }}</td>
-      </tr>
-      {% endfor %}
-
     </tbody>
   </table>
 </div>
