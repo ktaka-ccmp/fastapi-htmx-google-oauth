@@ -1,8 +1,7 @@
 {# Table should be always returned first until this commit is taken into main branch.
 https://github.com/bigskysoftware/htmx/pull/1794/commits #}
 
-{# If we use hx-swap-oob it will make logic for the reset button more complicated #}
-{# <tbody hx-swap-oob="beforeend:#table-body" id="table-body"> #}
+<tbody hx-swap-oob="beforeend:#table-body">
 {% for cs in customers %}
 <tr>
   <td>{{ cs.id }}</td>
@@ -10,11 +9,11 @@ https://github.com/bigskysoftware/htmx/pull/1794/commits #}
   <td>{{ cs.email }}</td>
 </tr>
 {% endfor %}
-{# </tbody> #}
+</tbody>
 
 <span hx-swap-oob="innerHTML:#bluebutton">
   <button class="btn btn-light" hx-get="/htmx/content.list.tbody?skip={{ skip_next }}&limit={{ limit }}"
-    hx-target="#table-body" hx-swap="beforeend" hx-trigger="click"> Load More
+    hx-swap="none" hx-trigger="click"> Load More
   </button>
 </span>
 

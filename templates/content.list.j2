@@ -20,13 +20,13 @@
 <p></p>
 
 <div>
-  <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?limit={{ limit }}" hx-target="#table-body"
+  <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?skip={{ 0 - limit }}&limit={{ limit }}" hx-target="#table-body"
     hx-swap="innerHTML" hx-trigger="click"> Reset
   </button>
 
   <span id="bluebutton">
     <button class="btn btn-light" hx-get="/htmx/content.list.tbody?skip={{ skip_next }}&limit={{ limit }}"
-      hx-target="#table-body" hx-swap="beforeend" hx-trigger="load, click"> Load More
+      hx-swap="none" hx-trigger="click"> Load More
     </button>
   </span>
 </div>
