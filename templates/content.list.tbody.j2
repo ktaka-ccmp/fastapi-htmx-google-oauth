@@ -1,6 +1,13 @@
 {# Table should be always returned first until this commit is taken into main branch.
 https://github.com/bigskysoftware/htmx/pull/1794/commits #}
 
+<tbody hx-swap-oob="innerHTML:#skip_table">
+<tr>
+  <td>{{ skip_next - limit }}</td>
+  <td>{{ skip_next }}</td>
+</tr>
+</tbody>
+
 <tbody hx-swap-oob="beforeend:#table-body">
 {% for cs in customers %}
 <tr>
@@ -17,14 +24,3 @@ https://github.com/bigskysoftware/htmx/pull/1794/commits #}
   </button>
 </span>
 
-<span hx-swap-oob="innerHTML:#skip">
-  <div>
-    skip = {{skip_next - limit}},
-  </div>
-</span>
-
-<span hx-swap-oob="innerHTML:#skip_next">
-  <div>
-    skip_next = {{skip_next}},
-  </div>
-</span>

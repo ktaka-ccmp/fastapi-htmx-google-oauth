@@ -2,33 +2,32 @@
 <h2>{{title}}</h2>
 </p>
 
-<div>
-  Counters are updated by hx-swap-oob. Yes, this is so cool!
-  <span id="skip">
-    <div>
-      skip = {{skip_next - limit}},
+<div class="container">
+  <div class="row">
+    <div class="col">
+      <p>The skip counters are updated by hx-swap-oob. This is so cool!</p>
+      <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?skip={{ 0 - limit }}&limit={{ limit }}"
+        hx-target="#table-body" hx-swap="innerHTML" hx-trigger="click"> Reset
+      </button>
+      <span id="bluebutton">
+        <button class="btn btn-light" hx-get="/htmx/content.list.tbody?skip={{ skip_next }}&limit={{ limit }}"
+          hx-swap="none" hx-trigger="click"> Load More
+        </button>
+      </span>
     </div>
-  </span>
-
-  <span id="skip_next">
-    <div>
-      skip_next = {{skip_next}},
+    <div class="col-3">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>skip</th>
+            <th>skip_next</th>
+          </tr>
+        </thead>
+        <tbody id="skip_table">
+        </tbody>
+      </table>
     </div>
-  </span>
-</div>
-
-<p></p>
-
-<div>
-  <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?skip={{ 0 - limit }}&limit={{ limit }}" hx-target="#table-body"
-    hx-swap="innerHTML" hx-trigger="click"> Reset
-  </button>
-
-  <span id="bluebutton">
-    <button class="btn btn-light" hx-get="/htmx/content.list.tbody?skip={{ skip_next }}&limit={{ limit }}"
-      hx-swap="none" hx-trigger="click"> Load More
-    </button>
-  </span>
+  </div>
 </div>
 
 <div class="container">
