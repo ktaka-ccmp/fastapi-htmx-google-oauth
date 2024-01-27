@@ -4,7 +4,7 @@
 
 <div class="container">
   <div class="row">
-    <div class="col">
+    <div class="col-6">
       <p>The skip counters are updated by hx-swap-oob. This is so cool!</p>
       <button class="btn btn-dark" hx-get="/htmx/content.list.tbody?skip={{ 0 - limit }}&limit={{ limit }}"
         hx-target="#table-body" hx-swap="innerHTML" hx-trigger="click"> Reset
@@ -15,7 +15,7 @@
         </button>
       </span>
     </div>
-    <div class="col-3">
+    <div class="col-2">
       <table class="table">
         <thead>
           <tr>
@@ -26,6 +26,8 @@
         <tbody id="skip_table">
         </tbody>
       </table>
+    </div>
+    <div class="col">
     </div>
   </div>
 </div>
