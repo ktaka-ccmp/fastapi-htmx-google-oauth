@@ -170,7 +170,7 @@ async def logout2(request: Request, response: Response, hx_request: Optional[str
             )
     context = {"request": request, "message": "User logged out"}
     response = templates.TemplateResponse("content.error.j2", context)
-    response.headers["HX-Trigger"] = "showComponent"
+    response.headers["HX-Trigger"] = "LoginStatusChange"
     response.delete_cookie("session_id") # delete key="session_id" from cookie of response
 
     session_id = request.cookies.get("session_id") # get session_id from cookie of request
