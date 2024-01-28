@@ -1,5 +1,6 @@
 import secrets
 import urllib.parse
+import datetime
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
@@ -30,7 +31,7 @@ def get_session_by_session_id(session_id: str, cs: Session):
         return None
 
 def create_session(user: UserBase, cs: Session):
-    session_id=secrets.token_urlsafe(32)
+    session_id=secrets.token_urlsafe(64)
     session = get_session_by_session_id(session_id, cs)
     if session:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
@@ -149,12 +150,17 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         session_id = create_session(user, cs)
 
         response = JSONResponse({"Authenticated_as": user.name})
+        max_age = 600
+        expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age)
         response.set_cookie(
             key="session_id",
             value=session_id,
             httponly=True,
-            max_age=600,
-            expires=600,
+            samesite="lax",
+            # secure=True,
+            # domain="",
+            max_age=max_age,
+            expires=expires,
         )
 
         return response
