@@ -1,5 +1,6 @@
 import secrets
 import urllib.parse
+import datetime
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
@@ -30,7 +31,7 @@ def get_session_by_session_id(session_id: str, cs: Session):
         return None
 
 def create_session(user: UserBase, cs: Session):
-    session_id=secrets.token_urlsafe(32)
+    session_id=secrets.token_urlsafe(64)
     session = get_session_by_session_id(session_id, cs)
     if session:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
@@ -149,12 +150,17 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         session_id = create_session(user, cs)
 
         response = JSONResponse({"Authenticated_as": user.name})
+        max_age = 600
+        expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age)
         response.set_cookie(
             key="session_id",
             value=session_id,
             httponly=True,
-            max_age=600,
-            expires=600,
+            samesite="lax",
+            # secure=True,
+            # domain="",
+            max_age=max_age,
+            expires=expires,
         )
 
         return response
@@ -168,16 +174,18 @@ async def logout2(request: Request, response: Response, hx_request: Optional[str
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only HX request is allowed to this end point."
             )
-    context = {"request": request, "message": "User logged out"}
-    response = templates.TemplateResponse("content.error.j2", context)
-    response.headers["HX-Trigger"] = "showComponent"
-    response.delete_cookie("session_id") # delete key="session_id" from cookie of response
 
-    session_id = request.cookies.get("session_id") # get session_id from cookie of request
-    if session_id:
-        delete_session(session_id, cs)
+    req_session_id = request.cookies.get("session_id") # get session_id from cookie of request
+    if req_session_id:
+        context = {"request": request, "message": "User logged out"}
+        response = templates.TemplateResponse("content.error.j2", context)
+        delete_session(req_session_id, cs)
+        response.delete_cookie("session_id") # delete key="session_id" from cookie of response
+        response.headers["HX-Trigger"] = "LoginStatusChange"
     else:
-        print("No session_id found.")
+        context = {"request": request, "message": "The session has expired."}
+        response = templates.TemplateResponse("content.error.j2", context)
+        print("No session_id found. Probably the session has expirred.")
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
