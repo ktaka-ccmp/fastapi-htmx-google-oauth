@@ -6,7 +6,7 @@
         xhr.onload = function () {
             {# htmx.logAll(); #}
             console.log("Response from {{ login_url }}: ", xhr.responseText);
-            htmx.trigger("#auth_navbar", "LoginStatusChange");
+            htmx.trigger("body", "LoginStatusChange");
         };
         xhr.send('credential=' + response.credential);
     }

@@ -168,16 +168,18 @@ async def logout2(request: Request, response: Response, hx_request: Optional[str
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only HX request is allowed to this end point."
             )
-    context = {"request": request, "message": "User logged out"}
-    response = templates.TemplateResponse("content.error.j2", context)
-    response.headers["HX-Trigger"] = "LoginStatusChange"
-    response.delete_cookie("session_id") # delete key="session_id" from cookie of response
 
-    session_id = request.cookies.get("session_id") # get session_id from cookie of request
-    if session_id:
-        delete_session(session_id, cs)
+    req_session_id = request.cookies.get("session_id") # get session_id from cookie of request
+    if req_session_id:
+        context = {"request": request, "message": "User logged out"}
+        response = templates.TemplateResponse("content.error.j2", context)
+        delete_session(req_session_id, cs)
+        response.delete_cookie("session_id") # delete key="session_id" from cookie of response
+        response.headers["HX-Trigger"] = "LoginStatusChange"
     else:
-        print("No session_id found.")
+        context = {"request": request, "message": "The session has expired."}
+        response = templates.TemplateResponse("content.error.j2", context)
+        print("No session_id found. Probably the session has expirred.")
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
