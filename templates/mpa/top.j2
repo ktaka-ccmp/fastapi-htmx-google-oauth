@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include '/head.j2' %}
+
+<header>
+  <div class="" id="auth_navbar" hx-get="/auth/auth_navbar" hx-target="#auth_navbar" hx-swap="innerHTML"
+    hx-trigger="load, LoginStatusChange">
+  </div>
+</header>
+
+<div class="container">
+  {% set title = 'MPA TOP' %}
+  {% include '/content.top.j2' %}
+</div>
+
+</body>
+
+</html>

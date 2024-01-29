@@ -14,6 +14,11 @@ async def spa(request: Request):
     context = {"request": request}
     return templates.TemplateResponse("spa.j2", context)
 
+@router.get("/top", response_class=HTMLResponse)
+async def spa(request: Request):
+    context = {"request": request}
+    return templates.TemplateResponse("mpa/top.j2", context)
+
 @router.get("/content.top", response_class=HTMLResponse)
 async def spa_content(request: Request, hx_request: Optional[str] = Header(None)):
     if not hx_request:
