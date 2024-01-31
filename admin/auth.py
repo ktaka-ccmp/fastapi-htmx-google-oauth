@@ -1,6 +1,5 @@
 import secrets
 import urllib.parse
-import datetime
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
@@ -151,7 +150,10 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
 
         response = JSONResponse({"Authenticated_as": user.name})
         max_age = 600
-        expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age)
+        # We don't have to calculate expires. See https://www.starlette.io/responses/#set-cookie
+        # "expires - Either an integer that defines the number of seconds until the cookie expires, or a datetime. Optional"
+        # expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age)
+
         response.set_cookie(
             key="session_id",
             value=session_id,
@@ -160,7 +162,7 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
             # secure=True,
             # domain="",
             max_age=max_age,
-            expires=expires,
+            expires=max_age,
         )
 
         return response
@@ -186,6 +188,7 @@ async def logout2(request: Request, response: Response, hx_request: Optional[str
         context = {"request": request, "message": "The session has expired."}
         response = templates.TemplateResponse("content.error.j2", context)
         print("No session_id found. Probably the session has expirred.")
+        response.headers["HX-Trigger"] = "LoginStatusChange"
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)

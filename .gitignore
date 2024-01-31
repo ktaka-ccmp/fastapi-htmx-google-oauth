@@ -6,3 +6,4 @@ __pycache__
 requirement.txt
 data.db
 cache.db
+.vscode
