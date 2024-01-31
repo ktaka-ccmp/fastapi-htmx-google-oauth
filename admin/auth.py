@@ -188,6 +188,7 @@ async def logout2(request: Request, response: Response, hx_request: Optional[str
         context = {"request": request, "message": "The session has expired."}
         response = templates.TemplateResponse("content.error.j2", context)
         print("No session_id found. Probably the session has expirred.")
+        response.headers["HX-Trigger"] = "LoginStatusChange"
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
