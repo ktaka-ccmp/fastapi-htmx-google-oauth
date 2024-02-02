@@ -2,7 +2,7 @@
 
 ## What this look like
 
-<img src=./images/FastAPI-HTMX-Google-OAuth01.gif width="600px">
+<img src=./images/FastAPI-HTMX-Google-OAuth043.gif width="600px">
 
 ## Directory structure
 
@@ -10,31 +10,41 @@
 .
 ├── Readme.md
 ├── admin
+│   ├── auth.py
 │   ├── debug.py
 │   └── user.py
 ├── auth
-│   └── auth.py
 ├── config.py
+├── customer
 ├── data
 │   ├── cache.db
 │   ├── create_data.sh
 │   ├── data.db
 │   └── db.py
 ├── htmx
-│   └── htmx.py
+│   ├── htmx.py
+│   └── htmx_secret.py
 ├── images
-│   └── FastAPI-HTMX-Google-OAuth01.gif
+│   ├── FastAPI-HTMX-Google-OAuth01.gif
+│   ├── cat_meme.png
+│   ├── dog_meme.png
+│   ├── door-check-out-icon.png
+│   ├── image.py
+│   └── unknown-person-icon.png
 ├── main.py
 └── templates
-    ├── auth.j2
-    ├── auth.login.google.html.j2
-    ├── auth.login.google.j2
-    ├── auth.login.google.js.j2
-    ├── auth.logout.j2
-    ├── header.j2
-    ├── list.j2
-    ├── list.tbody.j2
-    └── list.tbody_empty.j2
+    ├── auth_navbar.login.callback.j2
+    ├── auth_navbar.login.html.j2
+    ├── auth_navbar.login.j2
+    ├── auth_navbar.login.js.j2
+    ├── auth_navbar.logout.j2
+    ├── content.error.j2
+    ├── content.list.j2
+    ├── content.list.tbody.j2
+    ├── content.secret.j2
+    ├── content.top.j2
+    ├── head.j2
+    └── spa.j2
 ```
 
 # Howto run app in this repository.
