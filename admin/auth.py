@@ -138,35 +138,32 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         return  Response("Error: Failed to validate JWT token")
 
     user = await GetOrCreateUser(idinfo, ds)
+    if not user:
+        print("Error: Failed to GetOrCreateUser")
+        return  Response("Error: Failed to GetOrCreateUser for the JWT")
 
-    if user:
-        user_dict = get_user_by_email(user.email, ds)
-        if not user_dict:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error: User not exist in User table in DB."
-                )
-        user = UserBase(**user_dict)
-        session_id = create_session(user, cs)
+    session_id = create_session(user, cs)
+    if not session_id:
+        print("Error: Failed to create session for", user.name)
+        return  Response("Error: Failed to create session for"+user.name)
 
-        response = JSONResponse({"Authenticated_as": user.name})
-        max_age = 600
-        expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
-        response.set_cookie(
-            key="session_id",
-            value=session_id,
-            httponly=True,
-            samesite="lax",
-            # secure=True,
-            # domain="",
-            max_age=max_age,
-            expires=expires,
-        )
-        response.headers["HX-Trigger"] = "LoginStatusChange"
+    max_age = 600
+    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
 
-        return response
-    else:
-        return Response("Error: Auth failed")
+    response = JSONResponse({"Authenticated_as": user.name})
+    response.set_cookie(
+        key="session_id",
+        value=session_id,
+        httponly=True,
+        samesite="lax",
+        # secure=True,
+        # domain="",
+        max_age=max_age,
+        expires=expires,
+    )
+    response.headers["HX-Trigger"] = "LoginStatusChange"
+
+    return response
 
 @router.get("/logout", response_class=HTMLResponse)
 async def logout(request: Request, response: Response, hx_request: Optional[str] = Header(None), cs: Session = Depends(get_cache)):
