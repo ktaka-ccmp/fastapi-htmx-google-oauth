@@ -1,5 +1,6 @@
 import secrets
 import urllib.parse
+from datetime import datetime, timezone, timedelta
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
@@ -150,10 +151,7 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
 
         response = JSONResponse({"Authenticated_as": user.name})
         max_age = 600
-        # We don't have to calculate expires. See https://www.starlette.io/responses/#set-cookie
-        # "expires - Either an integer that defines the number of seconds until the cookie expires, or a datetime. Optional"
-        # expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age)
-
+        expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
         response.set_cookie(
             key="session_id",
             value=session_id,
@@ -162,7 +160,7 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
             # secure=True,
             # domain="",
             max_age=max_age,
-            expires=max_age,
+            expires=expires,
         )
 
         return response
