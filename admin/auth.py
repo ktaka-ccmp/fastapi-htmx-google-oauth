@@ -162,13 +162,14 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
             max_age=max_age,
             expires=expires,
         )
+        response.headers["HX-Trigger"] = "LoginStatusChange"
 
         return response
     else:
         return Response("Error: Auth failed")
 
 @router.get("/logout", response_class=HTMLResponse)
-async def logout2(request: Request, response: Response, hx_request: Optional[str] = Header(None), cs: Session = Depends(get_cache)):
+async def logout(request: Request, response: Response, hx_request: Optional[str] = Header(None), cs: Session = Depends(get_cache)):
     if not hx_request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
