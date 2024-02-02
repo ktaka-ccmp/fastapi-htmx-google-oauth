@@ -1,14 +1,6 @@
 <script>
     function onSignIn(response) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', "{{ login_url }}");
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.onload = function () {
-            {# htmx.logAll(); #}
-            console.log("Response from {{ login_url }}: ", xhr.responseText);
-            htmx.trigger("body", "LoginStatusChange");
-        };
-        xhr.send('credential=' + response.credential);
+        {# console.log("Request JWT: ", response.credential); #}
+        htmx.ajax('POST', '{{ login_url }}', {values: {'credential': response.credential}, swap:'none'})
     }
-
 </script>
