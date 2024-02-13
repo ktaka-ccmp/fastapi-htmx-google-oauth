@@ -175,16 +175,12 @@ async def logout(request: Request, response: Response, hx_request: Optional[str]
 
     req_session_id = request.cookies.get("session_id") # get session_id from cookie of request
     if req_session_id:
-        context = {"request": request, "message": "User logged out"}
-        response = templates.TemplateResponse("content.error.j2", context)
         delete_session(req_session_id, cs)
         response.delete_cookie("session_id") # delete key="session_id" from cookie of response
-        response.headers["HX-Trigger"] = "LoginStatusChange"
-    else:
-        context = {"request": request, "message": "The session has expired."}
-        response = templates.TemplateResponse("content.error.j2", context)
-        print("No session_id found. Probably the session has expirred.")
-        response.headers["HX-Trigger"] = "LoginStatusChange"
+
+    context = {"request": request, "message": "User logged out"}
+    response = templates.TemplateResponse("content.error.j2", context)
+    response.headers["HX-Trigger"] = "LoginStatusChange"
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
