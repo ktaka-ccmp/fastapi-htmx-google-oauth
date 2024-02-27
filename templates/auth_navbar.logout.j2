@@ -14,13 +14,13 @@
         <div class="collapse navbar-collapse" id="MyNavbar">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <button hx-get="/htmx/content.top" hx-trigger="click" hx-target="#content_section" hx-swap="innerHTML" hx-push-url="true"
+                    <button hx-get="/htmx/content.top" hx-trigger="click" hx-target="#content_section" hx-swap="innerHTML" hx-push-url="/spa/content.top"
                         type="button" class="btn d-flex align-items-center">
                         Top</button>
                 </li>
                 <li>
                     <button hx-get="/htmx/content.list" hx-trigger="click" hx-target="#content_section"
-                        hx-swap="innerHTML" hx-push-url="true" type="button" class="btn d-flex align-items-center">
+                        hx-swap="innerHTML" hx-push-url="/spa/content.list" type="button" class="btn d-flex align-items-center">
                         hx-get demo
                     </button>
                 </li>
@@ -29,18 +29,19 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li>
                     <button hx-get="/htmx/content.secret1" hx-trigger="click" hx-target="#content_section"
-                        hx-swap="innerHTML" hx-push-url="true" type="button" class="btn d-flex align-items-center">
+                        hx-swap="innerHTML" hx-push-url="/spa/content.secret1" type="button" class="btn d-flex align-items-center">
                         Secret#1</button>
                 </li>
                 <li>
                     <button hx-get="/htmx/content.secret2" hx-trigger="click" hx-target="#content_section"
-                        hx-swap="innerHTML" hx-push-url="true" type="button" class="btn d-flex align-items-center">
+                        hx-swap="innerHTML" hx-push-url="/spa/content.secret2" type="button" class="btn d-flex align-items-center">
                         Secret#2</button>
                 </li>
             </ul>
 
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <div hx-get="{{logout_url}}" hx-trigger="click" hx-target="#content_section" hx-swap="innerHTML">
+                <div hx-get="{{logout_url}}" hx-trigger="click" hx-swap="none">
+                {# <div hx-get="{{logout_url}}" hx-trigger="click" hx-target="#content_section" hx-swap="innerHTML"> #}
                     <img class="rounded-circle" src="{{icon_url}}" alt="logout" name="logout"
                         style="width:2rem;height:2rem;border-radius:2rem">
                 </div>

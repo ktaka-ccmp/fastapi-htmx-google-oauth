@@ -9,11 +9,6 @@ from data.db import Customer, get_db
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
 
-@router.get("/spa", response_class=HTMLResponse)
-async def spa(request: Request):
-    context = {"request": request}
-    return templates.TemplateResponse("spa.j2", context)
-
 @router.get("/content.top", response_class=HTMLResponse)
 async def spa_content(request: Request, hx_request: Optional[str] = Header(None)):
     if not hx_request:

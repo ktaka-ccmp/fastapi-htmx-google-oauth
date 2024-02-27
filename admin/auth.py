@@ -89,7 +89,7 @@ async def get_current_user(session_id: str, ds: Session = Depends(get_db), cs: S
 
     return user
 
-@router.get("/is_authenticated")
+# @router.get("/is_authenticated")
 async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
 # Unsolved problem: The dummy dependency prohibit secret page access even for an authenticated user,
 # while it ise needed for Swagger UI to properly show the lock icon.
@@ -212,3 +212,22 @@ async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None)
 
     context = {"request": request, "client_id": client_id, "login_url": login_url, "icon_url": icon_url}
     return templates.TemplateResponse("auth_navbar.login.j2", context)
+
+@router.get("/check")
+async def check(request: Request, response: Response, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point."
+            )
+
+    user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+    if not user:
+        context = {"request": request, "message": "User logged out"}
+        response = templates.TemplateResponse("content.error.j2", context)
+        # response.headers["HX-Trigger"] = "LoginStatusChange"
+        return response
+
+    print("session_id: ", session_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
