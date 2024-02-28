@@ -2,10 +2,16 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from admin import debug, user, auth
-from htmx import htmx, htmx_secret
+from htmx import htmx, htmx_secret, spa
 from images import image
 
 app = FastAPI()
+
+app.include_router(
+    spa.router,
+    prefix="/spa",
+    tags=["spa"],
+)
 
 app.include_router(
     htmx.router,

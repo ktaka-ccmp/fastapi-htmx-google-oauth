@@ -89,7 +89,7 @@ async def get_current_user(session_id: str, ds: Session = Depends(get_db), cs: S
 
     return user
 
-@router.get("/is_authenticated")
+# @router.get("/is_authenticated")
 async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
 # Unsolved problem: The dummy dependency prohibit secret page access even for an authenticated user,
 # while it ise needed for Swagger UI to properly show the lock icon.
@@ -166,21 +166,22 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
     return response
 
 @router.get("/logout", response_class=HTMLResponse)
-async def logout(request: Request, response: Response, hx_request: Optional[str] = Header(None), cs: Session = Depends(get_cache)):
+async def logout(request: Request, response: Response, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), cs: Session = Depends(get_cache)):
     if not hx_request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only HX request is allowed to this end point."
             )
 
-    req_session_id = request.cookies.get("session_id") # get session_id from cookie of request
-    if req_session_id:
-        delete_session(req_session_id, cs)
-        response.delete_cookie("session_id") # delete key="session_id" from cookie of response
-
     context = {"request": request, "message": "User logged out"}
     response = templates.TemplateResponse("content.error.j2", context)
     response.headers["HX-Trigger"] = "LoginStatusChange"
+
+    # The response.delete_cookie() must be called after response is defined, i.e. should be below the "response = ....".
+    if session_id:
+        delete_session(session_id, cs)
+        response.delete_cookie("session_id") # delete key="session_id" from cookie of response
+
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
@@ -212,3 +213,22 @@ async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None)
 
     context = {"request": request, "client_id": client_id, "login_url": login_url, "icon_url": icon_url}
     return templates.TemplateResponse("auth_navbar.login.j2", context)
+
+@router.get("/check")
+async def check(request: Request, response: Response, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point."
+            )
+
+    print("session_id: ", session_id)
+
+    user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+    if not user:
+        context = {"request": request, "message": "User logged out"}
+        response = templates.TemplateResponse("content.error.j2", context)
+        return response
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
