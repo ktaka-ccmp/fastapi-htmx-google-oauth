@@ -161,7 +161,7 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         max_age=max_age,
         expires=expires,
     )
-    response.headers["HX-Trigger"] = "LoginStatusChange"
+    response.headers["HX-Trigger"] = "ReloadNavbar"
 
     return response
 
@@ -175,7 +175,7 @@ async def logout(request: Request, response: Response, session_id: Annotated[str
 
     context = {"request": request, "message": "User logged out"}
     response = templates.TemplateResponse("content.error.j2", context)
-    response.headers["HX-Trigger"] = "LoginStatusChange"
+    response.headers["HX-Trigger"] = "ReloadNavbar"
 
     # The response.delete_cookie() must be called after response is defined, i.e. should be below the "response = ....".
     if session_id:
@@ -185,7 +185,7 @@ async def logout(request: Request, response: Response, session_id: Annotated[str
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
-async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def auth_navbar(request: Request, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
 
     if not hx_request:
         raise HTTPException(
@@ -193,18 +193,22 @@ async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None)
             detail="Only HX request is allowed to this end point."
             )
 
-    # For authenticated users, return the menu.logout component.
-    try:
-        session_id = request.cookies.get("session_id")
+    if session_id is None:
+        user = None
+    else:
+        print("session_id: ", session_id)
         user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+
+    # For authenticated users, return the menu.logout component.
+    if user:
         logout_url = settings.origin_server + "/auth/logout"
         icon_url = settings.origin_server + "/img/logout.png"
 
         context = {"request": request, "session_id": session_id, "logout_url":logout_url, "icon_url": icon_url,
                    "name": user.name, "picture": user.picture, "email": user.email}
         return templates.TemplateResponse("auth_navbar.logout.j2", context)
-    except:
-        print("User not logged-in.")
+
+    print("User not logged-in.")
 
     # For unauthenticated users, return the menu.login component.
     client_id = settings.google_oauth2_client_id
@@ -212,7 +216,9 @@ async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None)
     icon_url = settings.origin_server + "/img/icon.png"
 
     context = {"request": request, "client_id": client_id, "login_url": login_url, "icon_url": icon_url}
-    return templates.TemplateResponse("auth_navbar.login.j2", context)
+    response = templates.TemplateResponse("auth_navbar.login.j2", context)
+    response.headers["HX-Trigger"] = "ReloadContent"
+    return response
 
 @router.get("/check")
 async def check(request: Request, response: Response, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
@@ -223,12 +229,16 @@ async def check(request: Request, response: Response, session_id: Annotated[str 
             detail="Only HX request is allowed to this end point."
             )
 
-    print("session_id: ", session_id)
+    if session_id is None:
+        user = None
+    else:
+        print("session_id: ", session_id)
+        user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
 
-    user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
     if not user:
         context = {"request": request, "message": "User logged out"}
         response = templates.TemplateResponse("content.error.j2", context)
+        response.headers["HX-Trigger"] = "ReloadNavbar"
         return response
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
