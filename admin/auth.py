@@ -8,7 +8,7 @@ from data.db import User, UserBase, Sessions
 from data.db import get_db, get_cache
 from admin.user import create as GetOrCreateUser
 
-from typing import Optional, Annotated
+from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer
 
 from google.oauth2 import id_token
@@ -59,7 +59,8 @@ def get_user_by_email(email: str, ds: Session):
 # The "lock icon" is also shown in routes that depend on "get_current_user".
 # async def get_current_user(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache), dummy: str = Depends(oauth2_scheme)):
 
-async def get_current_user(session_id: str, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def get_current_user(session_id: str,
+                           ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
     if not session_id:
         return None
 
@@ -69,34 +70,14 @@ async def get_current_user(session_id: str, ds: Session = Depends(get_db), cs: S
 
     user_dict = get_user_by_email(session["email"], ds)
     user=UserBase(**user_dict)
-
-    print("Session_id: ", session_id)
-    print("Session: ", session)
-    print("session[\"email\"]: ", session["email"])
-    print("user_dict: ", user_dict)
-    print("user: ", user)
-
-    # if not user:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="NotAuthenticated"
-    #         )
-    # if user.disabled:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="Disabled user"
-    #         )
-
     return user
 
-# @router.get("/is_authenticated")
-async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None,
+                           ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
 # Unsolved problem: The dummy dependency prohibit secret page access even for an authenticated user,
 # while it ise needed for Swagger UI to properly show the lock icon.
 # async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache), dummy: str = Depends(oauth2_scheme)):
     user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
-    # print("##### is_authenticated Session_id: ", session_id)
-    # print("##### is_authenticated user: ", user)
 
     if not user:
         raise HTTPException(
@@ -166,7 +147,11 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
     return response
 
 @router.get("/logout")
-async def logout(response: Response, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), cs: Session = Depends(get_cache)):
+async def logout(response: Response,
+                 session_id: Annotated[str | None, Cookie()] = None,
+                 hx_request: Annotated[str | None, Header()] = None,
+                 cs: Session = Depends(get_cache)):
+
     if not hx_request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -184,7 +169,11 @@ async def logout(response: Response, session_id: Annotated[str | None, Cookie()]
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
-async def auth_navbar(request: Request, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def auth_navbar(request: Request,
+                      session_id: Annotated[str|None, Cookie()] = None,
+                      hx_request: Annotated[str|None, Header()] = None,
+                      ds: Session = Depends(get_db), cs: Session = Depends(get_cache)
+                      ):
 
     if not hx_request:
         raise HTTPException(
@@ -192,11 +181,7 @@ async def auth_navbar(request: Request, session_id: Annotated[str | None, Cookie
             detail="Only HX request is allowed to this end point."
             )
 
-    if session_id is None:
-        user = None
-    else:
-        print("session_id: ", session_id)
-        user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+    user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
 
     # For authenticated users, return the menu.logout component.
     if user:
@@ -219,7 +204,10 @@ async def auth_navbar(request: Request, session_id: Annotated[str | None, Cookie
     return response
 
 @router.get("/check")
-async def check(request: Request, response: Response, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def check(response: Response,
+                session_id: Annotated[str|None, Cookie()] = None,
+                hx_request: Annotated[str|None, Header()] = None,
+                ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
 
     if not hx_request:
         raise HTTPException(
@@ -227,11 +215,7 @@ async def check(request: Request, response: Response, session_id: Annotated[str 
             detail="Only HX request is allowed to this end point."
             )
 
-    if session_id is None:
-        user = None
-    else:
-        print("session_id: ", session_id)
-        user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+    user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
 
     if not user:
         response = JSONResponse({"message": "user logged out"})
