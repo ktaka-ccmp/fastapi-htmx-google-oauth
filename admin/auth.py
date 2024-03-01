@@ -165,17 +165,16 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
 
     return response
 
-@router.get("/logout", response_class=HTMLResponse)
-async def logout(request: Request, response: Response, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), cs: Session = Depends(get_cache)):
+@router.get("/logout")
+async def logout(response: Response, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), cs: Session = Depends(get_cache)):
     if not hx_request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only HX request is allowed to this end point."
             )
 
-    context = {"request": request, "message": "User logged out"}
-    response = templates.TemplateResponse("content.error.j2", context)
-    response.headers["HX-Trigger"] = "ReloadNavbar"
+    response = JSONResponse({"message": "user logged out"})
+    response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
 
     # The response.delete_cookie() must be called after response is defined, i.e. should be below the "response = ....".
     if session_id:
@@ -217,7 +216,6 @@ async def auth_navbar(request: Request, session_id: Annotated[str | None, Cookie
 
     context = {"request": request, "client_id": client_id, "login_url": login_url, "icon_url": icon_url}
     response = templates.TemplateResponse("auth_navbar.login.j2", context)
-    response.headers["HX-Trigger"] = "ReloadContent"
     return response
 
 @router.get("/check")
@@ -236,9 +234,28 @@ async def check(request: Request, response: Response, session_id: Annotated[str 
         user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
 
     if not user:
-        context = {"request": request, "message": "User logged out"}
-        response = templates.TemplateResponse("content.error.j2", context)
-        response.headers["HX-Trigger"] = "ReloadNavbar"
+        response = JSONResponse({"message": "user logged out"})
+        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
         return response
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@router.get("/logout_content")
+async def logout_content(request: Request,
+                         session_id: Annotated[str|None, Cookie()] = None,
+                         hx_request: Annotated[str|None, Header()] = None,
+                         ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point."
+            )
+
+    user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+
+    if not user:
+        context = {"request": request, "message": "User logged out"}
+        return templates.TemplateResponse("content.error.j2", context)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
