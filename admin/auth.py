@@ -9,7 +9,7 @@ from data.db import get_db, get_cache
 from admin.user import create as GetOrCreateUser
 
 from typing import Annotated
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import APIKeyCookie
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+cookie_scheme = APIKeyCookie(name="session_id", description="Session Cookie Auth")
 
 def get_session_by_session_id(session_id: str, cs: Session):
     try:
@@ -54,12 +54,7 @@ def get_user_by_email(email: str, ds: Session):
     print("get_user_by_email -> user: ", user)
     return user
 
-# async def get_current_user(session_id: str, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
-# "dummy: str = Depends(oauth2_scheme)" is to show "Authorize" in swagger UI.
-# The "lock icon" is also shown in routes that depend on "get_current_user".
-# async def get_current_user(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache), dummy: str = Depends(oauth2_scheme)):
-
-async def get_current_user(session_id: str,
+async def get_current_user(session_id: str = Depends(cookie_scheme),
                            ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
     if not session_id:
         return None
@@ -72,11 +67,9 @@ async def get_current_user(session_id: str,
     user=UserBase(**user_dict)
     return user
 
-async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None,
+async def is_authenticated(session_id: str = Depends(cookie_scheme),
                            ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
-# Unsolved problem: The dummy dependency prohibit secret page access even for an authenticated user,
-# while it ise needed for Swagger UI to properly show the lock icon.
-# async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache), dummy: str = Depends(oauth2_scheme)):
+
     user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
 
     if not user:
@@ -92,7 +85,6 @@ async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None,
     else:
         print("Authenticated.")
         return JSONResponse({"message": "Authenticated"})
-        # return user
 
 async def VerifyToken(jwt: str):
     try:
