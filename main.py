@@ -5,7 +5,7 @@ from admin import debug, user, auth
 from htmx import htmx, htmx_secret, spa
 from images import image
 
-app = FastAPI()
+app = FastAPI(swagger_ui_parameters={"persistAuthorization": True})
 
 app.include_router(
     spa.router,

@@ -42,7 +42,7 @@ class User(DataStoreBase):
 class Sessions(CacheStoreBase):
     __tablename__ = 'sessions'
     id = Column('id', Integer, primary_key = True, autoincrement = True)
-    session_id = Column('session_id', String(64))
+    session_id = Column('session_id', String(254))
     user_id = Column('user_id', Integer)
     email = Column('email', String(254))
 
@@ -64,6 +64,14 @@ class UserBase(BaseModel):
     admin: bool
     password: str | None
     picture: HttpUrl | None
+    class Config:
+        from_attributes = True
+
+class SessionBase(BaseModel):
+    id: int
+    session_id: str
+    user_id: int
+    email: EmailStr
     class Config:
         from_attributes = True
 

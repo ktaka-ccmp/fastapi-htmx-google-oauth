@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
 
-cookie_scheme = APIKeyCookie(name="session_id", description="Session Cookie Auth")
+cookie_scheme = APIKeyCookie(name="session_id", description="Admin session_id is created by create_session.sh")
 
 def get_session_by_session_id(session_id: str, cs: Session):
     try:
