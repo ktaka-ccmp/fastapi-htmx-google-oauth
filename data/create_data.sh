@@ -28,8 +28,19 @@ done
 echo "Customer:"
 echo "select * from customer" | sqlite3 $DB | tail
 
-echo "Sessions:"
-echo "select * from sessions" | sqlite3 data/cache.db
-
 echo "Users:"
 echo "select * from user" | sqlite3 $DB
+
+pwgen(){
+    basenc --base64url < /dev/urandom | head -c 64 ; echo
+}
+
+email="admin01@example.com"
+ssid=$(pwgen)
+
+DB=data/cache.db
+
+echo "insert or replace into sessions (id, session_id,user_id,email) values (1, '$ssid', 1, '$email')" | sqlite3 $DB
+echo "Sessions:"
+echo "select * from sessions" | sqlite3 $DB
+

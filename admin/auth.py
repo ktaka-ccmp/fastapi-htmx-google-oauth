@@ -8,8 +8,8 @@ from data.db import User, UserBase, Sessions
 from data.db import get_db, get_cache
 from admin.user import create as GetOrCreateUser
 
-from typing import Optional, Annotated
-from fastapi.security import OAuth2PasswordBearer
+from typing import Annotated
+from fastapi.security import APIKeyCookie
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+cookie_scheme = APIKeyCookie(name="session_id", description="Admin session_id is created by create_session.sh")
 
 def get_session_by_session_id(session_id: str, cs: Session):
     try:
@@ -54,12 +54,8 @@ def get_user_by_email(email: str, ds: Session):
     print("get_user_by_email -> user: ", user)
     return user
 
-# async def get_current_user(session_id: str, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
-# "dummy: str = Depends(oauth2_scheme)" is to show "Authorize" in swagger UI.
-# The "lock icon" is also shown in routes that depend on "get_current_user".
-# async def get_current_user(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache), dummy: str = Depends(oauth2_scheme)):
-
-async def get_current_user(session_id: str, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def get_current_user(session_id: str = Depends(cookie_scheme),
+                           ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
     if not session_id:
         return None
 
@@ -69,34 +65,12 @@ async def get_current_user(session_id: str, ds: Session = Depends(get_db), cs: S
 
     user_dict = get_user_by_email(session["email"], ds)
     user=UserBase(**user_dict)
-
-    print("Session_id: ", session_id)
-    print("Session: ", session)
-    print("session[\"email\"]: ", session["email"])
-    print("user_dict: ", user_dict)
-    print("user: ", user)
-
-    # if not user:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="NotAuthenticated"
-    #         )
-    # if user.disabled:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="Disabled user"
-    #         )
-
     return user
 
-# @router.get("/is_authenticated")
-async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
-# Unsolved problem: The dummy dependency prohibit secret page access even for an authenticated user,
-# while it ise needed for Swagger UI to properly show the lock icon.
-# async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, ds: Session = Depends(get_db), cs: Session = Depends(get_cache), dummy: str = Depends(oauth2_scheme)):
+async def is_authenticated(session_id: str = Depends(cookie_scheme),
+                           ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+
     user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
-    # print("##### is_authenticated Session_id: ", session_id)
-    # print("##### is_authenticated user: ", user)
 
     if not user:
         raise HTTPException(
@@ -111,7 +85,6 @@ async def is_authenticated(session_id: Annotated[str | None, Cookie()] = None, d
     else:
         print("Authenticated.")
         return JSONResponse({"message": "Authenticated"})
-        # return user
 
 async def VerifyToken(jwt: str):
     try:
@@ -161,21 +134,24 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         max_age=max_age,
         expires=expires,
     )
-    response.headers["HX-Trigger"] = "LoginStatusChange"
+    response.headers["HX-Trigger"] = "ReloadNavbar"
 
     return response
 
-@router.get("/logout", response_class=HTMLResponse)
-async def logout(request: Request, response: Response, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), cs: Session = Depends(get_cache)):
+@router.get("/logout")
+async def logout(response: Response,
+                 session_id: Annotated[str | None, Cookie()] = None,
+                 hx_request: Annotated[str | None, Header()] = None,
+                 cs: Session = Depends(get_cache)):
+
     if not hx_request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only HX request is allowed to this end point."
             )
 
-    context = {"request": request, "message": "User logged out"}
-    response = templates.TemplateResponse("content.error.j2", context)
-    response.headers["HX-Trigger"] = "LoginStatusChange"
+    response = JSONResponse({"message": "user logged out"})
+    response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
 
     # The response.delete_cookie() must be called after response is defined, i.e. should be below the "response = ....".
     if session_id:
@@ -185,7 +161,11 @@ async def logout(request: Request, response: Response, session_id: Annotated[str
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
-async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def auth_navbar(request: Request,
+                      session_id: Annotated[str|None, Cookie()] = None,
+                      hx_request: Annotated[str|None, Header()] = None,
+                      ds: Session = Depends(get_db), cs: Session = Depends(get_cache)
+                      ):
 
     if not hx_request:
         raise HTTPException(
@@ -193,18 +173,18 @@ async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None)
             detail="Only HX request is allowed to this end point."
             )
 
+    user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+
     # For authenticated users, return the menu.logout component.
-    try:
-        session_id = request.cookies.get("session_id")
-        user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+    if user:
         logout_url = settings.origin_server + "/auth/logout"
         icon_url = settings.origin_server + "/img/logout.png"
 
         context = {"request": request, "session_id": session_id, "logout_url":logout_url, "icon_url": icon_url,
                    "name": user.name, "picture": user.picture, "email": user.email}
         return templates.TemplateResponse("auth_navbar.logout.j2", context)
-    except:
-        print("User not logged-in.")
+
+    print("User not logged-in.")
 
     # For unauthenticated users, return the menu.login component.
     client_id = settings.google_oauth2_client_id
@@ -212,10 +192,14 @@ async def auth_navbar(request: Request, hx_request: Optional[str] = Header(None)
     icon_url = settings.origin_server + "/img/icon.png"
 
     context = {"request": request, "client_id": client_id, "login_url": login_url, "icon_url": icon_url}
-    return templates.TemplateResponse("auth_navbar.login.j2", context)
+    response = templates.TemplateResponse("auth_navbar.login.j2", context)
+    return response
 
 @router.get("/check")
-async def check(request: Request, response: Response, session_id: Annotated[str | None, Cookie()] = None, hx_request: Optional[str] = Header(None), ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def check(response: Response,
+                session_id: Annotated[str|None, Cookie()] = None,
+                hx_request: Annotated[str|None, Header()] = None,
+                ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
 
     if not hx_request:
         raise HTTPException(
@@ -223,12 +207,31 @@ async def check(request: Request, response: Response, session_id: Annotated[str 
             detail="Only HX request is allowed to this end point."
             )
 
-    print("session_id: ", session_id)
+    user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+
+    if not user:
+        response = JSONResponse({"message": "user logged out"})
+        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+        return response
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@router.get("/logout_content")
+async def logout_content(request: Request,
+                         session_id: Annotated[str|None, Cookie()] = None,
+                         hx_request: Annotated[str|None, Header()] = None,
+                         ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point."
+            )
 
     user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+
     if not user:
         context = {"request": request, "message": "User logged out"}
-        response = templates.TemplateResponse("content.error.j2", context)
-        return response
+        return templates.TemplateResponse("content.error.j2", context)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
