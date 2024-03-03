@@ -1,7 +1,7 @@
 import secrets
 import urllib.parse
 from datetime import datetime, timezone, timedelta
-from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, Header, Cookie
+from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, BackgroundTasks, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
 from data.db import User, UserBase, Sessions
@@ -16,6 +16,8 @@ from google.auth.transport import requests
 from config import settings
 
 from fastapi.templating import Jinja2Templates
+
+session_max_age = 60
 
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
@@ -36,7 +38,9 @@ def create_session(user: UserBase, cs: Session):
     if session:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
     if not session:
-        session_entry=Sessions(session_id=session_id, user_id=user.id, email=user.email)
+        max_age = session_max_age + 10
+        expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
+        session_entry=Sessions(session_id=session_id, user_id=user.id, email=user.email, expires=expires.strftime('%s'))
         cs.add(session_entry)
         cs.commit()
         cs.refresh(session_entry)
@@ -120,7 +124,7 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         print("Error: Failed to create session for", user.name)
         return  Response("Error: Failed to create session for"+user.name)
 
-    max_age = 600
+    max_age = session_max_age
     expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
 
     response = JSONResponse({"Authenticated_as": user.name})
@@ -235,3 +239,20 @@ async def logout_content(request: Request,
         return templates.TemplateResponse("content.error.j2", context)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+def do_cleanup_sessions(cs: Session):
+    now = int(datetime.now(timezone.utc).strftime('%s'))
+    session=cs.query(Sessions).filter(Sessions.expires<now).all()
+    for row in session:
+        print("delete session: ", row.__dict__)
+    session=cs.query(Sessions).filter(Sessions.expires<now).delete()
+    cs.commit()
+    print("Finished do_cleanup_sessions")
+
+@router.get("/cleanup_sessions")
+async def cleanup_sessions(
+                         background_tasks: BackgroundTasks,
+                         session_id: Annotated[str|None, Cookie()] = None,
+                         cs: Session = Depends(get_cache)):
+    background_tasks.add_task(do_cleanup_sessions, cs)
+    return {"message": "Session CleanUp triggered."}
