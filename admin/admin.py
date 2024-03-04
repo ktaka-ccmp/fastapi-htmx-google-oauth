@@ -1,37 +1,21 @@
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Response, status, Depends, Form
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
-from data.db import get_cache
 
-from admin.auth import get_session_by_session_id
+from data import db
+from admin import auth
 
 router = APIRouter()
 
-@router.get("/login")
-def login_page():
-    return HTMLResponse(
-        """
-        <form action="/admin/login" method="post">
-        Admin Email: <input type="text" name="email" required>
-        <br>
-        ApiKey: <input type="text" name="apikey" required>
-        <input type="submit" value="Login">
-        </form>
-        """
-    )
-
 @router.post("/login")
-def login(response: Response, email: str = Form(...), apikey: str = Form(...), cs: Session = Depends(get_cache)):
+def login(response: Response, email: str = Form(...), apikey: str = Form(...), cs: Session = Depends(db.get_cache)):
 
     if not apikey or not email:
         return None
 
-    session = get_session_by_session_id(apikey, cs)
+    session = auth.get_session_by_session_id(apikey, cs)
     if not session:
-        # raise HTTPException(
-        #     status_code=status.HTTP_403_FORBIDDEN, detail="ApiKey not found"
-        # )
         response = JSONResponse({"Error": "ApiKey not found"})
         response.delete_cookie("session_id")
         return response
@@ -39,9 +23,7 @@ def login(response: Response, email: str = Form(...), apikey: str = Form(...), c
     if email == session["email"]:
         max_age = 600
         expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
-        # response = JSONResponse({"Authenticated_as": email})
-        # response = RedirectResponse(url="/spa", status_code=status.HTTP_303_SEE_OTHER)
-        response = RedirectResponse(url="/docs", status_code=status.HTTP_303_SEE_OTHER)
+        response = RedirectResponse(url="/admin/docs", status_code=status.HTTP_303_SEE_OTHER)
         response.set_cookie(
             key="session_id",
             value=apikey,

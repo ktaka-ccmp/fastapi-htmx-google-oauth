@@ -44,6 +44,8 @@ def create_session(user: UserBase, expires: int, cs: Session):
 
 def delete_session(session_id: str, cs: Session):
     session=cs.query(Sessions).filter(Sessions.session_id==session_id).first()
+    if session.email == "admin01@example.com":
+        return
     print("delete session: ", session.__dict__)
     cs.delete(session)
     cs.commit()
@@ -85,6 +87,22 @@ async def is_authenticated(session_id: str = Depends(cookie_scheme),
     else:
         print("Authenticated.")
         return JSONResponse({"message": "Authenticated"})
+
+class RequiresLogin(Exception):
+    pass
+
+async def is_authenticated_admin(
+                                 session_id: Annotated[str | None, Cookie()] = None,
+                                 ds: Session = Depends(get_db),
+                                 cs: Session = Depends(get_cache)
+                                 ):
+    user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
+    if not user:
+        raise RequiresLogin("You must log in as Admin")
+    if not user.disabled and user.admin:
+        print("Authenticated as Admin.")
+        return JSONResponse({"message": "Authenticated Admin"})
+    raise RequiresLogin("You must log in as Admin")
 
 async def VerifyToken(jwt: str):
     try:
