@@ -45,6 +45,7 @@ class Sessions(CacheStoreBase):
     session_id = Column('session_id', String(254))
     user_id = Column('user_id', Integer)
     email = Column('email', String(254))
+    expires = Column('expires', Integer)
 
 # schemas.py
 from pydantic import BaseModel, EmailStr, HttpUrl
@@ -72,6 +73,7 @@ class SessionBase(BaseModel):
     session_id: str
     user_id: int
     email: EmailStr
+    expires: int
     class Config:
         from_attributes = True
 
