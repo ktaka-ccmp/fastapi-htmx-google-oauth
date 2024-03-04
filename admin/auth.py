@@ -115,7 +115,7 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         print("Error: Failed to GetOrCreateUser")
         return  Response("Error: Failed to GetOrCreateUser for the JWT")
 
-    max_age = 60
+    max_age = 600
     expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
 
     session_id = create_session(user, int(expires.timestamp()), cs)
