@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from admin import debug, user, auth
+from admin import debug, user, auth, admin
 from htmx import htmx, htmx_secret, spa
 from images import image
 
@@ -51,6 +51,13 @@ app.include_router(
     tags=["CRUD"],
     dependencies=[Depends(auth.is_authenticated)],
 )
+
+app.include_router(
+    admin.router,
+    prefix="/admin",
+    tags=["Admin"],
+)
+
 
 origins = [
     "http://localhost:3000",
