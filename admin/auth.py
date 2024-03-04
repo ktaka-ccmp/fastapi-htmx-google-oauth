@@ -17,8 +17,6 @@ from config import settings
 
 from fastapi.templating import Jinja2Templates
 
-session_max_age = 60
-
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
 
@@ -32,14 +30,12 @@ def get_session_by_session_id(session_id: str, cs: Session):
     except:
         return None
 
-def create_session(user: UserBase, cs: Session):
+def create_session(user: UserBase, expires: datetime, cs: Session):
     session_id=secrets.token_urlsafe(64)
     session = get_session_by_session_id(session_id, cs)
     if session:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
     if not session:
-        max_age = session_max_age + 10
-        expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
         session_entry=Sessions(session_id=session_id, user_id=user.id, email=user.email, expires=expires.strftime('%s'))
         cs.add(session_entry)
         cs.commit()
@@ -119,13 +115,13 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         print("Error: Failed to GetOrCreateUser")
         return  Response("Error: Failed to GetOrCreateUser for the JWT")
 
-    session_id = create_session(user, cs)
+    max_age = 600
+    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
+
+    session_id = create_session(user, expires, cs)
     if not session_id:
         print("Error: Failed to create session for", user.name)
         return  Response("Error: Failed to create session for"+user.name)
-
-    max_age = session_max_age
-    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
 
     response = JSONResponse({"Authenticated_as": user.name})
     response.set_cookie(
@@ -189,6 +185,7 @@ async def auth_navbar(request: Request,
         return templates.TemplateResponse("auth_navbar.logout.j2", context)
 
     print("User not logged-in.")
+    do_cleanup_sessions(cs)
 
     # For unauthenticated users, return the menu.login component.
     client_id = settings.google_oauth2_client_id
@@ -242,10 +239,10 @@ async def logout_content(request: Request,
 
 def do_cleanup_sessions(cs: Session):
     now = int(datetime.now(timezone.utc).strftime('%s'))
-    session=cs.query(Sessions).filter(Sessions.expires<now).all()
+    session=cs.query(Sessions).filter(Sessions.expires<=now).all()
     for row in session:
         print("delete session: ", row.__dict__)
-    session=cs.query(Sessions).filter(Sessions.expires<now).delete()
+    session=cs.query(Sessions).filter(Sessions.expires<=now).delete()
     cs.commit()
     print("Finished do_cleanup_sessions")
 
@@ -254,5 +251,8 @@ async def cleanup_sessions(
                          background_tasks: BackgroundTasks,
                          session_id: Annotated[str|None, Cookie()] = None,
                          cs: Session = Depends(get_cache)):
+    if not session_id:
+        return {"message": "Session CleanUp not triggered. Please login first."}
+
     background_tasks.add_task(do_cleanup_sessions, cs)
     return {"message": "Session CleanUp triggered."}
