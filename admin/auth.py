@@ -30,13 +30,13 @@ def get_session_by_session_id(session_id: str, cs: Session):
     except:
         return None
 
-def create_session(user: UserBase, expires: datetime, cs: Session):
+def create_session(user: UserBase, expires: int, cs: Session):
     session_id=secrets.token_urlsafe(64)
     session = get_session_by_session_id(session_id, cs)
     if session:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
     if not session:
-        session_entry=Sessions(session_id=session_id, user_id=user.id, email=user.email, expires=expires.strftime('%s'))
+        session_entry=Sessions(session_id=session_id, user_id=user.id, email=user.email, expires=expires)
         cs.add(session_entry)
         cs.commit()
         cs.refresh(session_entry)
@@ -118,7 +118,7 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
     max_age = 600
     expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
 
-    session_id = create_session(user, expires, cs)
+    session_id = create_session(user, int(expires.timestamp()), cs)
     if not session_id:
         print("Error: Failed to create session for", user.name)
         return  Response("Error: Failed to create session for"+user.name)
@@ -238,7 +238,7 @@ async def logout_content(request: Request,
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 def do_cleanup_sessions(cs: Session):
-    now = int(datetime.now(timezone.utc).strftime('%s'))
+    now = int(datetime.now().timestamp())
     session=cs.query(Sessions).filter(Sessions.expires<=now).all()
     for row in session:
         print("delete session: ", row.__dict__)
