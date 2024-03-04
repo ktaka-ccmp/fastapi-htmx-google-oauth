@@ -58,7 +58,6 @@ app.include_router(
     tags=["Admin"],
 )
 
-
 origins = [
     "http://localhost:3000",
     "http://v200.h.ccmp.jp:4000",
