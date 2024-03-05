@@ -8,7 +8,7 @@ from admin import auth
 
 router = APIRouter()
 
-@router.post("/login")
+@router.post("/login", include_in_schema=False)
 def login(response: Response, email: str = Form(...), apikey: str = Form(...), cs: Session = Depends(db.get_cache)):
 
     if not apikey or not email:
