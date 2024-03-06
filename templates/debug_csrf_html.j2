@@ -4,7 +4,7 @@
     <title>CSRF Protected Form</title>
 </head>
 <body>
-    <form action="/debug/csrf_form" method="post">
+    <form action="{{url}}" method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <!-- Your form fields here -->
         <button type="submit">Submit</button>

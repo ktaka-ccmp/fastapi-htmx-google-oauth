@@ -32,9 +32,8 @@
         // Extract the CSRF token from the cookie
         const csrfToken = getCookie("csrf_token");
 
-        // Send a GET request to "/auth/csrf" with the CSRF token set in the header
-        fetch("/debug/csrf_verify", {
-          method: "GET",
+        fetch("{{url}}", {
+          method: "POST",
           headers: {
             "X-CSRF-Token": csrfToken,
           },
