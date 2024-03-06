@@ -1,10 +1,14 @@
 from config import settings
-from fastapi import Depends, APIRouter, Request
+from fastapi import Depends, APIRouter, HTTPException, Response, Request, Cookie
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import JSONResponse
+from typing import Annotated
 from sqlalchemy.orm import Session
 from data.db import Sessions, UserBase, get_cache
 from admin.auth import get_current_user, get_session_by_session_id
 
 router = APIRouter()
+templates = Jinja2Templates(directory='templates')
 
 @router.get("/sessions")
 async def list_sessions(cs: Session = Depends(get_cache)):
@@ -32,3 +36,21 @@ async def debug_headers(request: Request):
     headers = request.headers
     print("Headers: ", headers)
     return{"Headers": headers}
+
+from admin import auth
+
+@router.get("/refresh_token")
+def refresh_token(response: Response,
+                  session_id: Annotated[str | None, Cookie()] = None,
+                  cs: Session = Depends(get_cache)):
+    print("session_id: ", session_id)
+    try:
+        new_session_id, new_csrf_token = auth.mutate_session(response, session_id, cs)
+        return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+
+@router.get("/csrf")
+async def debug_csrf(request: Request):
+    context = {"request": request}
+    return templates.TemplateResponse("debug_csrf.j2", context)

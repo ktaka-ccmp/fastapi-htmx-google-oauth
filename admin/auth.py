@@ -33,8 +33,8 @@ def get_session_by_session_id(session_id: str, cs: Session):
 def create_session(response: Response, user: UserBase, cs: Session):
     user_id = user.id
     email = user.email
-    session_id = session_cookie(response, cs, user_id, email)
-    return session_id
+    session_id, csrf_token = session_cookie(response, cs, user_id, email)
+    return session_id, csrf_token
 
 def mutate_session(response: Response, old_session_id: str, cs: Session):
     old_session = get_session_by_session_id(old_session_id, cs)
@@ -42,19 +42,20 @@ def mutate_session(response: Response, old_session_id: str, cs: Session):
         raise HTTPException(status_code=404, detail="Session not found")
     user_id = old_session["user_id"]
     email = old_session["email"]
-    session_id = session_cookie(response, cs, user_id, email)
+    session_id, csrf_token = session_cookie(response, cs, user_id, email)
     delete_session(old_session_id, cs)
-    return session_id
+    return session_id, csrf_token
 
 def session_cookie(response, cs, user_id, email):
     session_id=secrets.token_urlsafe(64)
+    csrf_token = secrets.token_urlsafe(32)
     session = get_session_by_session_id(session_id, cs)
     if session:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
 
     max_age = 600
     expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
-    session_entry=Sessions(session_id=session_id, user_id=user_id, email=email, expires=int(expires.timestamp()))
+    session_entry=Sessions(session_id=session_id, csrf_token=csrf_token, user_id=user_id, email=email, expires=int(expires.timestamp()))
     cs.add(session_entry)
     cs.commit()
     cs.refresh(session_entry)
@@ -69,16 +70,33 @@ def session_cookie(response, cs, user_id, email):
         max_age=max_age,
         expires=expires,
     )
-    return session_id
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,
+        samesite="lax",
+        secure=True,
+        # domain="",
+        max_age=max_age,
+        expires=expires,
+    )
+    return session_id, csrf_token
 
-@router.get("/refresh_token")
-def refresh_token(response: Response, session_id: Annotated[str | None, Cookie()] = None, cs: Session = Depends(get_cache)):
-    print("session_id: ", session_id)
-    try:
-        new_session_id = mutate_session(response, session_id, cs)
-        return {"ok": True, "new_token": new_session_id}
-    except HTTPException as e:
-        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+@router.get("/csrf")
+def csrf_protect(
+                # x_csrf_token: str = Header(...),
+                x_csrf_token: Annotated[str | None, Header()] = None,
+                session_id: Annotated[str | None, Cookie()] = None,
+                cs: Session = Depends(get_cache)):
+    session = get_session_by_session_id(session_id,cs)
+    if session:
+        if x_csrf_token == session['csrf_token']:
+            return {"email": session['email'], "X-csrf-token": x_csrf_token}  # Or any other relevant session data
+        else:
+            print("X-csrf-token: ", x_csrf_token, "csrf_token in cache: ", session['csrf_token'])
+            raise HTTPException(status_code=403, detail="CSRF token mismatch")
+    else:
+        raise HTTPException(status_code=403, detail="Invalid session_id")
 
 def delete_session(session_id: str, cs: Session):
     session=cs.query(Sessions).filter(Sessions.session_id==session_id).first()
