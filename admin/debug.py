@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from typing import Annotated
 from sqlalchemy.orm import Session
 from data.db import Sessions, UserBase, get_cache
-from admin.auth import get_current_user, get_session_by_session_id
+from admin import auth
 
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
@@ -23,9 +23,9 @@ async def env():
         }
 
 @router.get("/me")
-async def dump_users_info(request: Request, user: UserBase = Depends(get_current_user), cs: Session = Depends(get_cache)):
+async def dump_users_info(request: Request, user: UserBase = Depends(auth.get_current_user), cs: Session = Depends(get_cache)):
     session_id = request.cookies.get("session_id")
-    session = get_session_by_session_id(session_id, cs)
+    session = auth.get_session_by_session_id(session_id, cs)
     try:
         return {"user": user, "session": session}
     except:
@@ -36,8 +36,6 @@ async def debug_headers(request: Request):
     headers = request.headers
     print("Headers: ", headers)
     return{"Headers": headers}
-
-from admin import auth
 
 @router.get("/refresh_token")
 def refresh_token(response: Response,
@@ -62,7 +60,7 @@ def csrf_protect(
                 session_id: Annotated[str | None, Cookie()] = None,
                 cs: Session = Depends(get_cache)):
     csrf_token = x_csrf_token
-    session = get_session_by_session_id(session_id,cs)
+    session = auth.get_session_by_session_id(session_id,cs)
     if not session or csrf_token != session['csrf_token']:
         raise HTTPException(status_code=403, detail="CSRF token mismatch")
     return {"ok": True, "csrf_token": csrf_token}
@@ -79,7 +77,7 @@ async def get_form(request: Request,
 async def submit_form(csrf_token: Annotated[str | None, Form()] = None,
                       session_id: Annotated[str | None, Cookie()] = None,
                       cs: Session = Depends(get_cache)):
-    session = get_session_by_session_id(session_id,cs)
+    session = auth.get_session_by_session_id(session_id,cs)
     if not session or csrf_token != session['csrf_token']:
             raise HTTPException(status_code=403, detail="CSRF token mismatch")
     return {"ok": True, "csrf_token": csrf_token}
