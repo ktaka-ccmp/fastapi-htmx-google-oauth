@@ -1,7 +1,7 @@
 from config import settings
-from fastapi import Depends, APIRouter, HTTPException, Response, Request, Cookie
+from fastapi import APIRouter, HTTPException, Response, Request, Depends, Cookie, Header, Form
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from typing import Annotated
 from sqlalchemy.orm import Session
 from data.db import Sessions, UserBase, get_cache
@@ -54,3 +54,35 @@ def refresh_token(response: Response,
 async def debug_csrf(request: Request):
     context = {"request": request}
     return templates.TemplateResponse("debug_csrf.j2", context)
+
+@router.get("/csrf_verify")
+def csrf_protect(
+                # x_csrf_token: str = Header(...),
+                x_csrf_token: Annotated[str | None, Header()] = None,
+                session_id: Annotated[str | None, Cookie()] = None,
+                cs: Session = Depends(get_cache)):
+    session = get_session_by_session_id(session_id,cs)
+    if session:
+        if x_csrf_token == session['csrf_token']:
+            return {"email": session['email'], "X-csrf-token": x_csrf_token}  # Or any other relevant session data
+        else:
+            print("X-csrf-token: ", x_csrf_token, "csrf_token in cache: ", session['csrf_token'])
+            raise HTTPException(status_code=403, detail="CSRF token mismatch")
+    else:
+        raise HTTPException(status_code=403, detail="Invalid session_id")
+
+@router.get("/csrf_form", response_class=HTMLResponse)
+async def get_form(request: Request,
+                   csrf_token: Annotated[str | None, Cookie()] = None):
+    print("csrf_token: ", csrf_token)
+    response = templates.TemplateResponse("csrf_form.j2", {"request": request, "csrf_token": csrf_token})
+    return response
+
+@router.post("/csrf_form")
+async def submit_form(csrf_token: Annotated[str | None, Form()] = None,
+                      session_id: Annotated[str | None, Cookie()] = None,
+                      cs: Session = Depends(get_cache)):
+    session = get_session_by_session_id(session_id,cs)
+    if not session or csrf_token != session['csrf_token']:
+            raise HTTPException(status_code=403, detail="CSRF token mismatch")
+    return {"detail": "Form submitted successfully!", "csrf_token": csrf_token}

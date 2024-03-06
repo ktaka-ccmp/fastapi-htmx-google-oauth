@@ -82,22 +82,6 @@ def session_cookie(response, cs, user_id, email):
     )
     return session_id, csrf_token
 
-@router.get("/csrf")
-def csrf_protect(
-                # x_csrf_token: str = Header(...),
-                x_csrf_token: Annotated[str | None, Header()] = None,
-                session_id: Annotated[str | None, Cookie()] = None,
-                cs: Session = Depends(get_cache)):
-    session = get_session_by_session_id(session_id,cs)
-    if session:
-        if x_csrf_token == session['csrf_token']:
-            return {"email": session['email'], "X-csrf-token": x_csrf_token}  # Or any other relevant session data
-        else:
-            print("X-csrf-token: ", x_csrf_token, "csrf_token in cache: ", session['csrf_token'])
-            raise HTTPException(status_code=403, detail="CSRF token mismatch")
-    else:
-        raise HTTPException(status_code=403, detail="Invalid session_id")
-
 def delete_session(session_id: str, cs: Session):
     session=cs.query(Sessions).filter(Sessions.session_id==session_id).first()
     if session.email == "admin01@example.com":
