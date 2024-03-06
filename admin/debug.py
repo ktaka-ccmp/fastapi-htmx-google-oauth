@@ -57,7 +57,7 @@ async def csrf_js_get(request: Request):
 async def csrf_js_post(x_csrf_token: Annotated[str | None, Header()] = None,
                  session_id: Annotated[str | None, Cookie()] = None,
                  cs: Session = Depends(get_cache)):
-    csrf_token = await auth.csrf_verify(csrf_token=x_csrf_token, session_id=session_id, cs=cs)
+    csrf_token = await auth.csrf_verify(x_csrf_token, session_id, cs)
     return {"ok": True, "csrf_token": csrf_token}
 
 @router.get("/csrf_html", response_class=HTMLResponse)
@@ -71,5 +71,5 @@ async def csrf_html_get(request: Request,
 async def csrf_html_post(csrf_token: Annotated[str | None, Form()] = None,
                          session_id: Annotated[str | None, Cookie()] = None,
                          cs: Session = Depends(get_cache)):
-    csrf_token = await auth.csrf_verify(csrf_token=csrf_token, session_id=session_id, cs=cs)
+    csrf_token = await auth.csrf_verify(csrf_token, session_id, cs)
     return {"ok": True, "csrf_token": csrf_token}
