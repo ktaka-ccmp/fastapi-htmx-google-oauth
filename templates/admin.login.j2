@@ -1,0 +1,19 @@
+<p>
+<h2>{{title}}</h2>
+</p>
+
+<div class="container">
+  <form action="/admin/login" method="post">
+
+    <div class="form-floating">
+      <input type="email" name="email" class="form-control" placeholder="Place email here" required>
+      <label for="email">Email</label>
+    </div>
+    <div class="form-floating">
+      <input type="text" name="apikey" class="form-control" placeholder="Place apikey here" required>
+      <label for="apikey">ApiKey</label>
+    </div>
+
+    <input type="submit" value="Login">
+  </form>
+</div>

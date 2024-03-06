@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source .env
+
 DB=data/data.db
 
 for i in {001..080} ; do
@@ -8,7 +10,7 @@ echo "insert into customer(name,email) values('a$i','a$i@example.com')"  \
 done
 
 for i in {01..01} ; do
-echo "insert into user(name,email,disabled,admin,password) values('admin$i','admin$i@example.com','0','1','fakehashed_admin$i')" | sqlite3 $DB
+echo "insert into user(name,email,disabled,admin,password,picture) values('admin$i','admin$i@example.com','0','1','fakehashed_admin$i','${ORIGIN_SERVER}/img/admin_icon.webp')" | sqlite3 $DB
 done
 
 for i in {02..02} ; do

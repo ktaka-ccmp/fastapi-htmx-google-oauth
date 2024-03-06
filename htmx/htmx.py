@@ -40,3 +40,13 @@ async def content_list_tbody(request: Request, skip: int = 0, limit: int = 1, hx
     customers = db.query(Customer).offset(skip).limit(limit).all()
     context = {"request": request, "skip_next": skip+limit, "limit": limit, 'customers': customers}
     return templates.TemplateResponse("content.list.tbody.j2", context)
+
+@router.get("/admin.login", response_class=HTMLResponse)
+async def admin_login(request: Request, hx_request: Optional[str] = Header(None)):
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point."
+            )
+    context = {"request": request, "title": "Admin Login"}
+    return templates.TemplateResponse("admin.login.j2", context)

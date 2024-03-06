@@ -18,3 +18,7 @@ async def main():
 @router.get("/secret2.png")
 async def main():
     return FileResponse("images/cat_meme.png")
+
+@router.get("/admin_icon.webp")
+async def main():
+    return FileResponse("images/admin_icon.webp")
