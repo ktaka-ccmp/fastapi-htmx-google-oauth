@@ -88,10 +88,10 @@ def delete_session(session_id: str, cs: Session):
     cs.delete(session)
     cs.commit()
 
-def get_user_by_email(email: str, ds: Session):
-    user=ds.query(User).filter(User.email==email).first().__dict__
+def get_user_by_user_id(user_id: int, ds: Session):
+    user=ds.query(User).filter(User.id==user_id).first().__dict__
     user.pop('_sa_instance_state')
-    print("get_user_by_email -> user: ", user)
+    print("get_user_by_user_id -> user: ", user)
     return user
 
 async def get_current_user(session_id: str = Depends(cookie_scheme),
@@ -103,7 +103,7 @@ async def get_current_user(session_id: str = Depends(cookie_scheme),
     if not session:
         return None
 
-    user_dict = get_user_by_email(session["email"], ds)
+    user_dict = get_user_by_user_id(session["user_id"], ds)
     user=UserBase(**user_dict)
     return user
 
