@@ -55,31 +55,17 @@ def session_cookie(response, cs, user_id, email):
 
     max_age = 600
     expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
-    session_entry=Sessions(session_id=session_id, csrf_token=csrf_token, user_id=user_id, email=email, expires=int(expires.timestamp()))
+    session_entry=Sessions(session_id=session_id, csrf_token=csrf_token,
+                           user_id=user_id, email=email, expires=int(expires.timestamp()))
     cs.add(session_entry)
     cs.commit()
     cs.refresh(session_entry)
 
-    response.set_cookie(
-        key="session_id",
-        value=session_id,
-        httponly=True,
-        samesite="lax",
-        secure=True,
-        # domain="",
-        max_age=max_age,
-        expires=expires,
-    )
-    response.set_cookie(
-        key="csrf_token",
-        value=csrf_token,
-        httponly=False,
-        samesite="lax",
-        secure=True,
-        # domain="",
-        max_age=max_age,
-        expires=expires,
-    )
+    response.set_cookie(key="session_id", value=session_id, httponly=True,
+                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+    response.set_cookie(key="csrf_token", value=csrf_token, httponly=False,
+                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+
     return session_id, csrf_token
 
 def delete_session(session_id: str, cs: Session):
