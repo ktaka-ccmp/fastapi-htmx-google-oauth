@@ -49,35 +49,27 @@ def refresh_token(response: Response,
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
 
 @router.get("/csrf_js")
-async def debug_csrf(request: Request):
+async def csrf_js_get(request: Request):
     context = {"request": request, "url":"/debug/csrf_js"}
     return templates.TemplateResponse("debug_csrf_js.j2", context)
 
 @router.post("/csrf_js")
-def csrf_protect(
-                # x_csrf_token: str = Header(...),
-                x_csrf_token: Annotated[str | None, Header()] = None,
-                session_id: Annotated[str | None, Cookie()] = None,
-                cs: Session = Depends(get_cache)):
-    csrf_token = x_csrf_token
-    session = auth.get_session_by_session_id(session_id,cs)
-    if not session or csrf_token != session['csrf_token']:
-        raise HTTPException(status_code=403, detail="CSRF token mismatch")
+async def csrf_js_post(x_csrf_token: Annotated[str | None, Header()] = None,
+                 session_id: Annotated[str | None, Cookie()] = None,
+                 cs: Session = Depends(get_cache)):
+    csrf_token = await auth.csrf_verify(csrf_token=x_csrf_token, session_id=session_id, cs=cs)
     return {"ok": True, "csrf_token": csrf_token}
 
 @router.get("/csrf_html", response_class=HTMLResponse)
-async def get_form(request: Request,
+async def csrf_html_get(request: Request,
                    csrf_token: Annotated[str | None, Cookie()] = None):
-    print("csrf_token: ", csrf_token)
     context = {"request": request, "csrf_token": csrf_token, "url":"/debug/csrf_html"}
     response = templates.TemplateResponse("debug_csrf_html.j2", context)
     return response
 
 @router.post("/csrf_html")
-async def submit_form(csrf_token: Annotated[str | None, Form()] = None,
-                      session_id: Annotated[str | None, Cookie()] = None,
-                      cs: Session = Depends(get_cache)):
-    session = auth.get_session_by_session_id(session_id,cs)
-    if not session or csrf_token != session['csrf_token']:
-            raise HTTPException(status_code=403, detail="CSRF token mismatch")
+async def csrf_html_post(csrf_token: Annotated[str | None, Form()] = None,
+                         session_id: Annotated[str | None, Cookie()] = None,
+                         cs: Session = Depends(get_cache)):
+    csrf_token = await auth.csrf_verify(csrf_token=csrf_token, session_id=session_id, cs=cs)
     return {"ok": True, "csrf_token": csrf_token}

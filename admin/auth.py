@@ -68,6 +68,12 @@ def session_cookie(response, cs, user_id, email):
 
     return session_id, csrf_token
 
+async def csrf_verify(csrf_token: str, session_id: str, cs: Session):
+    session = get_session_by_session_id(session_id,cs)
+    if not session or csrf_token != session['csrf_token']:
+            raise HTTPException(status_code=403, detail="CSRF token mismatch")
+    return csrf_token
+
 def delete_session(session_id: str, cs: Session):
     session=cs.query(Sessions).filter(Sessions.session_id==session_id).first()
     if session.email == "admin01@example.com":
