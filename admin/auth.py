@@ -30,7 +30,7 @@ def get_session_by_session_id(session_id: str, cs: Session):
     except:
         return None
 
-def create_session(user: UserBase, expires: int, cs: Session):
+def create_session_old(user: UserBase, expires: int, cs: Session):
     session_id=secrets.token_urlsafe(64)
     session = get_session_by_session_id(session_id, cs)
     if session:
@@ -41,6 +41,56 @@ def create_session(user: UserBase, expires: int, cs: Session):
         cs.commit()
         cs.refresh(session_entry)
     return session_id
+
+def create_session(response: Response, user: UserBase, cs: Session):
+    user_id = user.id
+    email = user.email
+    session_id = session_cookie(response, cs, user_id, email)
+    return session_id
+
+def mutate_session(response: Response, old_session_id: str, cs: Session):
+    old_session = get_session_by_session_id(old_session_id, cs)
+    if not old_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    user_id = old_session["user_id"]
+    email = old_session["email"]
+    session_id = session_cookie(response, cs, user_id, email)
+    delete_session(old_session_id, cs)
+    return session_id
+
+def session_cookie(response, cs, user_id, email):
+    session_id=secrets.token_urlsafe(64)
+    session = get_session_by_session_id(session_id, cs)
+    if session:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
+
+    max_age = 600
+    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
+    session_entry=Sessions(session_id=session_id, user_id=user_id, email=email, expires=int(expires.timestamp()))
+    cs.add(session_entry)
+    cs.commit()
+    cs.refresh(session_entry)
+
+    response.set_cookie(
+        key="session_id",
+        value=session_id,
+        httponly=True,
+        samesite="lax",
+        secure=True,
+        # domain="",
+        max_age=max_age,
+        expires=expires,
+    )
+    return session_id
+
+@router.get("/refresh_token")
+def refresh_token(response: Response, session_id: Annotated[str | None, Cookie()] = None, cs: Session = Depends(get_cache)):
+    print("session_id: ", session_id)
+    try:
+        new_session_id = mutate_session(response, session_id, cs)
+        return {"ok": True, "new_token": new_session_id}
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
 
 def delete_session(session_id: str, cs: Session):
     session=cs.query(Sessions).filter(Sessions.session_id==session_id).first()
@@ -133,25 +183,8 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         print("Error: Failed to GetOrCreateUser")
         return  Response("Error: Failed to GetOrCreateUser for the JWT")
 
-    max_age = 600
-    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
-
-    session_id = create_session(user, int(expires.timestamp()), cs)
-    if not session_id:
-        print("Error: Failed to create session for", user.name)
-        return  Response("Error: Failed to create session for"+user.name)
-
     response = JSONResponse({"Authenticated_as": user.name})
-    response.set_cookie(
-        key="session_id",
-        value=session_id,
-        httponly=True,
-        samesite="lax",
-        # secure=True,
-        # domain="",
-        max_age=max_age,
-        expires=expires,
-    )
+    create_session(response, user, cs)
     response.headers["HX-Trigger"] = "ReloadNavbar"
 
     return response
