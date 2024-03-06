@@ -30,18 +30,6 @@ def get_session_by_session_id(session_id: str, cs: Session):
     except:
         return None
 
-def create_session_old(user: UserBase, expires: int, cs: Session):
-    session_id=secrets.token_urlsafe(64)
-    session = get_session_by_session_id(session_id, cs)
-    if session:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
-    if not session:
-        session_entry=Sessions(session_id=session_id, user_id=user.id, email=user.email, expires=expires)
-        cs.add(session_entry)
-        cs.commit()
-        cs.refresh(session_entry)
-    return session_id
-
 def create_session(response: Response, user: UserBase, cs: Session):
     user_id = user.id
     email = user.email
