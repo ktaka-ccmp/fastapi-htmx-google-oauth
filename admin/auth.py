@@ -71,7 +71,7 @@ def session_cookie(response, cs, user_id, email):
 async def csrf_verify(csrf_token: str, session_id: str, cs: Session):
     session = get_session_by_session_id(session_id,cs)
     if not session or csrf_token != session['csrf_token']:
-            raise HTTPException(status_code=403, detail="CSRF token mismatch")
+            raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
     return csrf_token
 
 def delete_session(session_id: str, cs: Session):
