@@ -68,6 +68,24 @@ def session_cookie(response, cs, user_id, email):
 
     return session_id, csrf_token
 
+@router.get("/refresh_token")
+def refresh_token(response: Response,
+                  hx_request: Annotated[str | None, Header()] = None,
+                  session_id: Annotated[str | None, Cookie()] = None,
+                  cs: Session = Depends(get_cache)):
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point.")
+    if not session_id:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    try:
+        new_session_id, new_csrf_token = mutate_session(response, session_id, cs)
+        return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+
 async def csrf_verify(csrf_token: str, session_id: str, cs: Session):
     session = get_session_by_session_id(session_id,cs)
     if not session or csrf_token != session['csrf_token']:
