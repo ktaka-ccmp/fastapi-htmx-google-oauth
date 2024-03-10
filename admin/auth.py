@@ -232,8 +232,8 @@ async def auth_navbar(request: Request,
 
     # For authenticated users, return the menu.logout component.
     if user:
-        logout_url = settings.origin_server + "/auth/logout"
-        icon_url = settings.origin_server + "/img/logout.png"
+        logout_url = "/auth/logout"
+        icon_url = "/img/logout.png"
         refresh_token_url = "/auth/refresh_token"
 
         context = {"request": request, "session_id": session_id, "logout_url":logout_url,
@@ -246,8 +246,8 @@ async def auth_navbar(request: Request,
 
     # For unauthenticated users, return the menu.login component.
     client_id = settings.google_oauth2_client_id
-    login_url = settings.origin_server + "/auth/login"
-    icon_url = settings.origin_server + "/img/icon.png"
+    login_url = "/auth/login"
+    icon_url = "/img/icon.png"
     refresh_token_url = "/auth/refresh_token"
 
     context = {"request": request, "client_id": client_id, "login_url": login_url,
