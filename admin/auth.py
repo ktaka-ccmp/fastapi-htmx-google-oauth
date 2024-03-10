@@ -234,8 +234,10 @@ async def auth_navbar(request: Request,
     if user:
         logout_url = settings.origin_server + "/auth/logout"
         icon_url = settings.origin_server + "/img/logout.png"
+        refresh_token_url = "/auth/refresh_token"
 
-        context = {"request": request, "session_id": session_id, "logout_url":logout_url, "icon_url": icon_url,
+        context = {"request": request, "session_id": session_id, "logout_url":logout_url,
+                   "icon_url": icon_url, "refresh_token_url": refresh_token_url,
                    "name": user.name, "picture": user.picture, "email": user.email}
         return templates.TemplateResponse("auth_navbar.logout.j2", context)
 
@@ -246,8 +248,10 @@ async def auth_navbar(request: Request,
     client_id = settings.google_oauth2_client_id
     login_url = settings.origin_server + "/auth/login"
     icon_url = settings.origin_server + "/img/icon.png"
+    refresh_token_url = "/auth/refresh_token"
 
-    context = {"request": request, "client_id": client_id, "login_url": login_url, "icon_url": icon_url}
+    context = {"request": request, "client_id": client_id, "login_url": login_url,
+               "icon_url": icon_url, "refresh_token_url": refresh_token_url}
     response = templates.TemplateResponse("auth_navbar.login.j2", context)
     return response
 
