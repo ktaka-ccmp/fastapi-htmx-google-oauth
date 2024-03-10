@@ -17,9 +17,7 @@ async def spa_content(request: Request, hx_request: Optional[str] = Header(None)
             detail="Only HX request is allowed to this end point."
             )
     context = {"request": request, "title": "Htmx Spa Top"}
-    response = templates.TemplateResponse("content.top.j2", context)
-    response.headers["HX-Trigger"] = "RefreshToken"
-    return response
+    return templates.TemplateResponse("content.top.j2", context)
 
 # HTMX Incremental table update
 @router.get("/content.list", response_class=HTMLResponse)
@@ -30,9 +28,7 @@ async def content_list(request: Request, skip: int = 0, limit: int = 2, hx_reque
             detail="Only HX request is allowed to this end point."
             )
     context = {"request": request, "skip_next": skip, "limit": limit, "title": "Incremental hx-get demo"}
-    response = templates.TemplateResponse("content.list.j2", context)
-    response.headers["HX-Trigger"] = "RefreshToken"
-    return response
+    return templates.TemplateResponse("content.list.j2", context)
 
 @router.get("/content.list.tbody", response_class=HTMLResponse)
 async def content_list_tbody(request: Request, skip: int = 0, limit: int = 1, hx_request: Optional[str] = Header(None), db: Session = Depends(get_db)):
@@ -43,9 +39,7 @@ async def content_list_tbody(request: Request, skip: int = 0, limit: int = 1, hx
             )
     customers = db.query(Customer).offset(skip).limit(limit).all()
     context = {"request": request, "skip_next": skip+limit, "limit": limit, 'customers': customers}
-    response = templates.TemplateResponse("content.list.tbody.j2", context)
-    response.headers["HX-Trigger"] = "RefreshToken"
-    return response
+    return templates.TemplateResponse("content.list.tbody.j2", context)
 
 @router.get("/admin.login", response_class=HTMLResponse)
 async def admin_login(request: Request, hx_request: Optional[str] = Header(None)):

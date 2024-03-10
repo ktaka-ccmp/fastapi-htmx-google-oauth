@@ -70,6 +70,8 @@
   const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
 </script>
 
+{% include 'auth_refresh_token.j2' %}
+
 <style>
   .navbar-toggler,
   .navbar-toggler:active,

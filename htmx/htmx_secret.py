@@ -9,7 +9,7 @@ templates = Jinja2Templates(directory='templates')
 
 # Normal Response function
 @router.get("/content.secret1", response_class=HTMLResponse)
-async def content_secret1(request: Request, hx_request: Optional[str] = Header(None))
+async def content_secret1(request: Request, hx_request: Optional[str] = Header(None)):
     if not hx_request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -17,9 +17,7 @@ async def content_secret1(request: Request, hx_request: Optional[str] = Header(N
             )
     img_url = settings.origin_server + "/img/secret1.png"
     context = {"request": request, "title": "Oops, my secret's been revealed!", "img_url": img_url}
-    response = templates.TemplateResponse("content.secret.j2", context)
-    response.headers["HX-Trigger"] = "RefreshToken"
-    return response
+    return templates.TemplateResponse("content.secret.j2", context)
 
 @router.get("/content.secret2", response_class=HTMLResponse)
 async def content_secret2(request: Request, hx_request: Optional[str] = Header(None)):
@@ -30,6 +28,4 @@ async def content_secret2(request: Request, hx_request: Optional[str] = Header(N
             )
     img_url = settings.origin_server + "/img/secret2.png"
     context = {"request": request, "title": "Believe it or not, it's absolutely not me!", "img_url": img_url}
-    response = templates.TemplateResponse("content.secret.j2", context)
-    response.headers["HX-Trigger"] = "RefreshToken"
-    return response
+    return templates.TemplateResponse("content.secret.j2", context)

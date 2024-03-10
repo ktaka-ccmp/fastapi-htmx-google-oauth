@@ -1,0 +1,69 @@
+<script>
+
+    // Fire a /auth/refres_htoken request if activities are detected past 60 seconds.
+
+
+    // Function to make POST request using Fetch API
+    const makeGetRequestWithCsrfToken = (csrfToken) => {
+
+        console.log("makePostRequestWithCsrfToken csrf_token = ", csrfToken)
+        const headers = new Headers({
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        });
+
+        fetch({{ refresh_token_url }}, {
+            method: 'GET',
+            headers: headers,
+        }).then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Network response was not ok.');
+        }).then(data => {
+            console.log('Success:', data);
+        }).catch((error) => {
+            console.error('Error:', error);
+        });
+    }
+
+    const do_refresh_token = (csrfToken) => {
+        console.log("do_refresh_token csrf_token = ", csrfToken)
+        htmx.ajax('GET', '{{ refresh_token_url }}',
+            { headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, }, swap: 'none' })
+    }
+
+    let userIsActive = false;
+    const updateUserActivityStatus = () => {
+        userIsActive = true;
+    }
+
+    document.addEventListener('mousemove', updateUserActivityStatus);
+    document.addEventListener('keypress', updateUserActivityStatus);
+    document.addEventListener('scroll', updateUserActivityStatus);
+
+    const periodicallyCheckActivityAndCsrfTokenAndPost = () => {
+        const checkInterval = 10000; // 60 seconds
+
+        setInterval(() => {
+            const currentTime = Date.now();
+            if (userIsActive) {
+                console.log('Activity detected!');
+                const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='));
+                if (csrfToken) {
+                    const tokenValue = csrfToken.split('=')[1];
+                    // makeGetRequestWithCsrfToken(tokenValue);
+                    do_refresh_token(tokenValue);
+                } else {
+                    console.log('CSRF token not found');
+                }
+                userIsActive = false;
+                console.log('userIsActive: ', userIsActive);
+            }
+        }, checkInterval);
+    }
+
+    // Start the periodic check
+    periodicallyCheckActivityAndCsrfTokenAndPost();
+
+</script>
