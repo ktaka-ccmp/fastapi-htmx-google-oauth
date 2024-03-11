@@ -49,7 +49,7 @@ class Sessions(CacheStoreBase):
     expires = Column('expires', Integer)
 
 # schemas.py
-from pydantic import BaseModel, EmailStr, HttpUrl
+from pydantic import BaseModel, EmailStr, HttpUrl, FilePath
 
 class CustomerBase(BaseModel):
     id: int
@@ -65,7 +65,7 @@ class UserBase(BaseModel):
     disabled: bool
     admin: bool
     password: str | None
-    picture: HttpUrl | None
+    picture: HttpUrl | str | None
     class Config:
         from_attributes = True
 

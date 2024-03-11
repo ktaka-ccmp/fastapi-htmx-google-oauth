@@ -40,6 +40,8 @@ def mutate_session(response: Response, old_session_id: str, cs: Session):
     old_session = get_session_by_session_id(old_session_id, cs)
     if not old_session:
         raise HTTPException(status_code=404, detail="Session not found")
+    if old_session["email"] == settings.admin_email:
+        return old_session_id, old_session["csrf_token"]
     user_id = old_session["user_id"]
     email = old_session["email"]
     session_id, csrf_token = session_cookie(response, cs, user_id, email)
@@ -98,7 +100,7 @@ async def csrf_verify(csrf_token: str, session_id: str, cs: Session):
 
 def delete_session(session_id: str, cs: Session):
     session=cs.query(Sessions).filter(Sessions.session_id==session_id).first()
-    if session.email == "admin01@example.com":
+    if session.email == settings.admin_email:
         return
     print("delete session: ", session.__dict__)
     cs.delete(session)

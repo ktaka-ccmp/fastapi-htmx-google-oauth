@@ -10,7 +10,7 @@ echo "insert into customer(name,email) values('a$i','a$i@example.com')"  \
 done
 
 for i in {01..01} ; do
-echo "insert into user(name,email,disabled,admin,password,picture) values('admin$i','admin$i@example.com','0','1','fakehashed_admin$i','${ORIGIN_SERVER}/img/admin_icon.webp')" | sqlite3 $DB
+echo "insert into user(name,email,disabled,admin,password,picture) values('${ADMIN_EMAIL}','${ADMIN_EMAIL}','0','1','fakehashed_admin$i','/img/admin_icon.webp')" | sqlite3 $DB
 done
 
 for i in {02..02} ; do
@@ -37,7 +37,7 @@ pwgen(){
     basenc --base64url < /dev/urandom | head -c 64 ; echo
 }
 
-email="admin01@example.com"
+email=${ADMIN_EMAIL}
 ssid=$(pwgen)
 
 DB=data/cache.db
