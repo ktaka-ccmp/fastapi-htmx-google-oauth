@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi import docs, utils
 from fastapi.responses import RedirectResponse
 
 from admin import debug, user, auth, admin
@@ -15,28 +14,6 @@ app = FastAPI(
 @app.exception_handler(auth.RequiresLogin)
 async def requires_login(request: Request, _: Exception):
     return RedirectResponse(url="/spa/admin.login")
-
-@app.get("/docs")
-@app.get("/spa/docs")
-def redirect_docs():
-    return RedirectResponse(url="/admin/docs")
-
-@app.get("/redoc")
-@app.get("/spa/redoc")
-def redirect_redoc():
-    return RedirectResponse(url="/admin/redoc")
-
-@app.get("/admin/docs", include_in_schema=False, dependencies=[Depends(auth.is_authenticated_admin)])
-async def get_documentation():
-    return docs.get_swagger_ui_html(openapi_url="/admin/openapi.json", title="docs")
-
-@app.get("/admin/redoc", include_in_schema=False, dependencies=[Depends(auth.is_authenticated_admin)])
-async def get_redoc_documentation():
-    return docs.get_redoc_html(openapi_url="/admin/openapi.json", title="docs")
-
-@app.get("/admin/openapi.json", include_in_schema=False, dependencies=[Depends(auth.is_authenticated_admin)])
-async def openapi():
-    return utils.get_openapi(title=app.title, version=app.version, routes=app.routes)
 
 app.include_router(
     spa.router,
@@ -83,10 +60,20 @@ app.include_router(
     dependencies=[Depends(auth.is_authenticated)],
 )
 
+# docs and redocs
+app.include_router(
+    admin.doc_router,
+    tags=["Admin"],
+    include_in_schema=False,
+    dependencies=[Depends(auth.is_authenticated_admin)]
+)
+
+# login endpoint for doc and redoc
 app.include_router(
     admin.router,
     prefix="/admin",
     tags=["Admin"],
+    include_in_schema=False,
 )
 
 origins = [
