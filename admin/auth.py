@@ -36,6 +36,9 @@ def create_session(response: Response, user: UserBase, cs: Session):
     session_id, csrf_token = session_cookie(response, cs, user_id, email)
     return session_id, csrf_token
 
+def hash_email(email: str):
+    return email
+
 def mutate_session(response: Response, old_session_id: str, cs: Session):
     old_session = get_session_by_session_id(old_session_id, cs)
     if not old_session:
@@ -67,6 +70,8 @@ def session_cookie(response, cs, user_id, email):
                         samesite="Lax", secure=True, max_age=max_age, expires=expires,)
     response.set_cookie(key="csrf_token", value=csrf_token, httponly=False,
                         samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+    response.set_cookie(key="user_token", value=hash_email(email), httponly=False,
+                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
 
     return session_id, csrf_token
 
@@ -75,6 +80,7 @@ async def refresh_token(response: Response,
                   hx_request: Annotated[str | None, Header()] = None,
                   session_id: Annotated[str | None, Cookie()] = None,
                   x_csrf_token: Annotated[str | None, Header()] = None,
+                  x_user_token: Annotated[str | None, Header()] = None,
                   cs: Session = Depends(get_cache)):
 
     if not hx_request:
@@ -86,16 +92,22 @@ async def refresh_token(response: Response,
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     try:
-        await csrf_verify(x_csrf_token, session_id, cs)
+        await csrf_verify(x_csrf_token, x_user_token, session_id, cs)
         new_session_id, new_csrf_token = mutate_session(response, session_id, cs)
         return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
     except HTTPException as e:
-        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+        response = JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+        return response
 
-async def csrf_verify(csrf_token: str, session_id: str, cs: Session):
+async def csrf_verify(csrf_token: str, user_token: str, session_id: str, cs: Session):
     session = get_session_by_session_id(session_id,cs)
+    hashed_email = hash_email(session['email'])
+    print("user_token: ", user_token, "hashed_email: ", hashed_email)
     if not session or csrf_token != session['csrf_token']:
             raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
+    elif user_token != hashed_email:
+            raise HTTPException(status_code=403, detail="USER token: "+user_token+" did not match with "+hashed_email+".")
     return csrf_token
 
 def delete_session(session_id: str, cs: Session):
@@ -214,7 +226,8 @@ async def logout(response: Response,
     if session_id:
         delete_session(session_id, cs)
         response.delete_cookie("session_id") # delete key="session_id" from cookie of response
-
+        response.delete_cookie("x_csrf_token")
+        response.delete_cookie("x_user_token")
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
@@ -238,9 +251,9 @@ async def auth_navbar(request: Request,
         icon_url = "/img/logout.png"
         refresh_token_url = "/auth/refresh_token"
 
-        context = {"request": request, "session_id": session_id, "logout_url":logout_url,
+        context = {"request": request, "logout_url":logout_url,
                    "icon_url": icon_url, "refresh_token_url": refresh_token_url,
-                   "name": user.name, "picture": user.picture, "email": user.email}
+                   "name": user.name, "picture": user.picture, "userToken": hash_email(user.email)}
         return templates.TemplateResponse("auth_navbar.logout.j2", context)
 
     print("User not logged-in.")
@@ -290,13 +303,8 @@ async def logout_content(request: Request,
             detail="Only HX request is allowed to this end point."
             )
 
-    user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
-
-    if not user:
-        context = {"request": request, "message": "User logged out"}
-        return templates.TemplateResponse("content.error.j2", context)
-
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    context = {"request": request, "message": "User logged out"}
+    return templates.TemplateResponse("content.error.j2", context)
 
 def do_cleanup_sessions(cs: Session):
     now = int(datetime.now().timestamp())

@@ -27,16 +27,12 @@ def login(response: Response, email: str = Form(...),
         expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
         response = RedirectResponse(url="/docs",
                                     status_code=status.HTTP_303_SEE_OTHER)
-        response.set_cookie(
-            key="session_id",
-            value=apikey,
-            httponly=True,
-            samesite="lax",
-            secure=True,
-            # domain="",
-            max_age=max_age,
-            expires=expires,
-        )
+        response.set_cookie(key="session_id", value=apikey, httponly=True,
+                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+        response.set_cookie(key="csrf_token", value=session["csrf_token"], httponly=False,
+                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+        response.set_cookie(key="user_token", value=auth.hash_email(email), httponly=False,
+                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
         return response
 
     response = JSONResponse({"Error": "Invalid ApiKey"})

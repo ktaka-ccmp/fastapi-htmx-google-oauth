@@ -39,10 +39,11 @@ pwgen(){
 
 email=${ADMIN_EMAIL}
 ssid=$(pwgen)
+csrf_token=$(pwgen)
 
 DB=data/cache.db
 
-echo "insert or replace into sessions (id, session_id,user_id,email) values (1, '$ssid', 1, '$email')" | sqlite3 $DB
+echo "insert or replace into sessions (id, session_id,user_id,email,csrf_token) values (1, '$ssid', 1, '$email', '$csrf_token')" | sqlite3 $DB
 echo "Sessions:"
 echo "select * from sessions" | sqlite3 $DB
 
