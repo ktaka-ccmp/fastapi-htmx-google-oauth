@@ -1,74 +1,59 @@
 <input type="hidden" id="userToken" value="{{ userToken }}">
 
 <script>
-    const getCookieValue = name => {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        return parts.length === 2 ? parts.pop().split(';').shift() : undefined;
-    };
+    (function () {
+        // Utility to safely get cookie values
+        const getCookieValue = name => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            return parts.length === 2 ? parts.pop().split(';').shift() : undefined;
+        };
 
-    const do_refresh_token = () => {
-        const csrfToken = getCookieValue('csrf_token');
-        if (!csrfToken) {
-            console.log('CSRF token not found');
-            return;
-        }
+        // Main function to refresh the token
+        const do_refresh_token = () => {
+            const csrfToken = getCookieValue('csrf_token');
+            console.log("do_refresh_token csrf_token = ", csrfToken);
+            const userToken = document.getElementById('userToken').value;
 
-        console.log("do_refresh_token csrf_token = ", csrfToken);
-        const userToken = document.getElementById('userToken').value;
+            htmx.ajax('GET', '{{ refresh_token_url }}', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-USER-TOKEN': userToken,
+                },
+                swap: 'none'
+            });
+        };
 
-        htmx.ajax('GET', '{{ refresh_token_url }}', {
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-USER-TOKEN': userToken,
-            },
-            swap: 'none'
-        });
-    };
+        // Setup to monitor user activity
+        let userIsActive = false;
+        document.addEventListener('mousemove', () => userIsActive = true);
+        document.addEventListener('keypress', () => userIsActive = true);
+        document.addEventListener('scroll', () => userIsActive = true);
 
-    let userIsActive = false;
-    const updateUserActivityStatus = () => {
-        userIsActive = true;
-    };
+        // Interval for checking user activity
+        const activityCheckInterval = 10000; // 10 seconds
+        window.clearInterval(window.userActivityInterval); // Clear existing interval if script is reloaded
+        window.userActivityInterval = setInterval(() => {
+            if (userIsActive) {
+                console.log('Activity detected, attempting to refresh token...');
+                do_refresh_token();
+                userIsActive = false;
+            }
+        }, activityCheckInterval);
 
-    document.addEventListener('mousemove', updateUserActivityStatus);
-    document.addEventListener('keypress', updateUserActivityStatus);
-    document.addEventListener('scroll', updateUserActivityStatus);
+        // Interval for detecting changes in 'user_token' cookie
+        let lastUT = getCookieValue('user_token');
+        const tokenCheckInterval = 1000; // 1 second
+        window.clearInterval(window.tokenChangeInterval); // Clear existing interval if script is reloaded
+        window.tokenChangeInterval = setInterval(() => {
+            const currentUT = getCookieValue('user_token');
+            if (currentUT !== lastUT) {
+                console.log('Cookie user_token has changed, attempting to refresh token...');
+                do_refresh_token();
+                lastUT = currentUT;
+            }
+        }, tokenCheckInterval);
 
-    // Setup MutationObserver to monitor changes to the userToken input value
-    const userTokenElement = document.getElementById('userToken');
-    const observer = new MutationObserver(() => {
-        do_refresh_token();
-    });
-
-    observer.observe(userTokenElement, {
-        attributes: true,
-        attributeFilter: ['value']
-    });
-
-    // Check every 60 seconds if user activity is detected to potentially call do_refresh_token
-    setInterval(() => {
-        if (userIsActive) {
-            console.log('Activity detected, attempting to refresh token...');
-            do_refresh_token();
-            userIsActive = false; // Reset activity status after check
-        }
-    }, 60000);
-
-    // Monitor changes to the user_token in the cookie every 1 second to potentially call do_refresh_token
-    let lastKnownCookieUserToken = null;
-
-    setInterval(() => {
-        const currentCookieUserToken = getCookieValue('user_token');
-        if (currentCookieUserToken !== lastKnownCookieUserToken) {
-            lastKnownCookieUserToken = currentCookieUserToken;
-            console.log('Cookie user_token has changed, attempting to refresh token...');
-            do_refresh_token();
-        } else if (lastKnownCookieUserToken && currentCookieUserToken === undefined) {
-            // Specifically handle the case where the cookie was present but is now removed
-            console.log('Cookie user_token has been removed, attempting to refresh token...');
-            do_refresh_token();
-        }
-    }, 1000);
+    })();
 </script>

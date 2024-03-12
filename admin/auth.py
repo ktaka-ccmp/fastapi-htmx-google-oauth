@@ -33,7 +33,7 @@ def get_session_by_session_id(session_id: str, cs: Session):
 def create_session(response: Response, user: UserBase, cs: Session):
     user_id = user.id
     email = user.email
-    session_id, csrf_token = session_cookie(response, cs, user_id, email)
+    session_id, csrf_token = new_session_cookie(response, cs, user_id, email)
     return session_id, csrf_token
 
 def hash_email(email: str):
@@ -47,11 +47,11 @@ def mutate_session(response: Response, old_session_id: str, cs: Session):
         return old_session_id, old_session["csrf_token"]
     user_id = old_session["user_id"]
     email = old_session["email"]
-    session_id, csrf_token = session_cookie(response, cs, user_id, email)
+    session_id, csrf_token = new_session_cookie(response, cs, user_id, email)
     delete_session(old_session_id, cs)
     return session_id, csrf_token
 
-def session_cookie(response, cs, user_id, email):
+def new_session_cookie(response: Response, cs: Session, user_id: int, email: str):
     session_id=secrets.token_urlsafe(64)
     csrf_token = secrets.token_urlsafe(32)
     session = get_session_by_session_id(session_id, cs)
@@ -75,6 +75,19 @@ def session_cookie(response, cs, user_id, email):
 
     return session_id, csrf_token
 
+def delete_session_cookie(response: Response, session_id: str, cs: Session):
+    if session_id:
+        delete_session(session_id, cs)
+    max_age = 0
+    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
+    response.set_cookie(key="session_id", value="", httponly=True,
+                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+    response.set_cookie(key="csrf_token", value="", httponly=False,
+                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+    response.set_cookie(key="user_token", value="", httponly=False,
+                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+    return response
+
 @router.get("/refresh_token")
 async def refresh_token(response: Response,
                   hx_request: Annotated[str | None, Header()] = None,
@@ -89,11 +102,14 @@ async def refresh_token(response: Response,
             detail="Only HX request is allowed to this end point.")
 
     if not session_id:
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        response = Response(status_code=status.HTTP_204_NO_CONTENT)
+        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+        return response
 
     try:
         await csrf_verify(x_csrf_token, x_user_token, session_id, cs)
         new_session_id, new_csrf_token = mutate_session(response, session_id, cs)
+        response.headers["HX-Trigger"] = "ReloadNavbar"
         return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
     except HTTPException as e:
         response = JSONResponse(status_code=e.status_code, content={"detail": e.detail})
@@ -102,16 +118,22 @@ async def refresh_token(response: Response,
 
 async def csrf_verify(csrf_token: str, user_token: str, session_id: str, cs: Session):
     session = get_session_by_session_id(session_id,cs)
-    hashed_email = hash_email(session['email'])
-    print("user_token: ", user_token, "hashed_email: ", hashed_email)
-    if not session or csrf_token != session['csrf_token']:
-            raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
-    elif user_token != hashed_email:
-            raise HTTPException(status_code=403, detail="USER token: "+user_token+" did not match with "+hashed_email+".")
-    return csrf_token
+    if not session:
+        raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
+    elif csrf_token == session['csrf_token'] and user_token == hash_email(session["email"]):
+        return csrf_token
+    elif csrf_token != session['csrf_token']:
+        raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
+    elif user_token != hash_email(session["email"]):
+        raise HTTPException(status_code=403, detail="USER token: "+user_token+" did not match the record.")
+    else:
+        raise HTTPException(status_code=403, detail="Unexpected things happend.")
 
 def delete_session(session_id: str, cs: Session):
     session=cs.query(Sessions).filter(Sessions.session_id==session_id).first()
+    if not session:
+        print("Session not found: ", session_id)
+        return
     if session.email == settings.admin_email:
         return
     print("delete session: ", session.__dict__)
@@ -221,13 +243,7 @@ async def logout(response: Response,
 
     response = JSONResponse({"message": "user logged out"})
     response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
-
-    # The response.delete_cookie() must be called after response is defined, i.e. should be below the "response = ....".
-    if session_id:
-        delete_session(session_id, cs)
-        response.delete_cookie("session_id") # delete key="session_id" from cookie of response
-        response.delete_cookie("x_csrf_token")
-        response.delete_cookie("x_user_token")
+    delete_session_cookie(response, session_id, cs)
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
@@ -266,7 +282,7 @@ async def auth_navbar(request: Request,
     refresh_token_url = "/auth/refresh_token"
 
     context = {"request": request, "client_id": client_id, "login_url": login_url,
-               "icon_url": icon_url, "refresh_token_url": refresh_token_url}
+               "icon_url": icon_url, "refresh_token_url": refresh_token_url, "userToken": "anonymous"}
     response = templates.TemplateResponse("auth_navbar.login.j2", context)
     return response
 
