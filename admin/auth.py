@@ -1,5 +1,6 @@
 import secrets
 import urllib.parse
+import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, BackgroundTasks, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -37,14 +38,21 @@ def create_session(response: Response, user: UserBase, cs: Session):
     return session_id, csrf_token
 
 def hash_email(email: str):
-    return email
+    return hashlib.sha256(email.encode()).hexdigest()
 
-def mutate_session(response: Response, old_session_id: str, cs: Session):
+def mutate_session(response: Response, old_session_id: str, cs: Session, immediate: bool = False):
     old_session = get_session_by_session_id(old_session_id, cs)
     if not old_session:
         raise HTTPException(status_code=404, detail="Session not found")
     if old_session["email"] == settings.admin_email:
         return old_session_id, old_session["csrf_token"]
+
+    age_left = old_session["expires"] - int(datetime.now(timezone.utc).timestamp())
+    if not immediate and age_left*2 > settings.session_max_age:
+        print("Session still has much time: ", age_left, " seconds left.")
+        return old_session_id, old_session["csrf_token"]
+
+    print("Session expires soon in", age_left, ". Mutating the session.")
     user_id = old_session["user_id"]
     email = old_session["email"]
     session_id, csrf_token = new_session_cookie(response, cs, user_id, email)
@@ -52,13 +60,13 @@ def mutate_session(response: Response, old_session_id: str, cs: Session):
     return session_id, csrf_token
 
 def new_session_cookie(response: Response, cs: Session, user_id: int, email: str):
-    session_id=secrets.token_urlsafe(64)
+    session_id = secrets.token_urlsafe(64)
     csrf_token = secrets.token_urlsafe(32)
     session = get_session_by_session_id(session_id, cs)
     if session:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
 
-    max_age = 600
+    max_age = settings.session_max_age
     expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
     session_entry=Sessions(session_id=session_id, csrf_token=csrf_token,
                            user_id=user_id, email=email, expires=int(expires.timestamp()))
@@ -108,7 +116,7 @@ async def refresh_token(response: Response,
 
     try:
         await csrf_verify(x_csrf_token, x_user_token, session_id, cs)
-        new_session_id, new_csrf_token = mutate_session(response, session_id, cs)
+        new_session_id, new_csrf_token = mutate_session(response, session_id, cs, False)
         response.headers["HX-Trigger"] = "ReloadNavbar"
         return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
     except HTTPException as e:
@@ -118,6 +126,7 @@ async def refresh_token(response: Response,
 
 async def csrf_verify(csrf_token: str, user_token: str, session_id: str, cs: Session):
     session = get_session_by_session_id(session_id,cs)
+    # print("#### csrf_verify: ", user_token, hash_email(session["email"]))
     if not session:
         raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
     elif csrf_token == session['csrf_token'] and user_token == hash_email(session["email"]):
@@ -136,14 +145,14 @@ def delete_session(session_id: str, cs: Session):
         return
     if session.email == settings.admin_email:
         return
-    print("delete session: ", session.__dict__)
+    print("delete_session: ", session.__dict__)
     cs.delete(session)
     cs.commit()
 
 def get_user_by_user_id(user_id: int, ds: Session):
     user=ds.query(User).filter(User.id==user_id).first().__dict__
     user.pop('_sa_instance_state')
-    print("get_user_by_user_id -> user: ", user)
+    # print("get_user_by_user_id -> user: ", user)
     return user
 
 async def get_current_user(session_id: str = Depends(cookie_scheme),
@@ -326,7 +335,7 @@ def do_cleanup_sessions(cs: Session):
     now = int(datetime.now().timestamp())
     session=cs.query(Sessions).filter(Sessions.expires<=now).all()
     for row in session:
-        print("delete session: ", row.__dict__)
+        print("do_cleanup_sessions: ", row.__dict__)
     session=cs.query(Sessions).filter(Sessions.expires<=now).delete()
     cs.commit()
     print("Finished do_cleanup_sessions")

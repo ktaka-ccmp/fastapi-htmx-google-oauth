@@ -41,9 +41,9 @@ async def debug_headers(request: Request):
 def refresh_token(response: Response,
                   session_id: Annotated[str | None, Cookie()] = None,
                   cs: Session = Depends(get_cache)):
-    print("session_id: ", session_id)
+    # print("session_id: ", session_id)
     try:
-        new_session_id, new_csrf_token = auth.mutate_session(response, session_id, cs)
+        new_session_id, new_csrf_token = auth.mutate_session(response, session_id, cs, True)
         return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
