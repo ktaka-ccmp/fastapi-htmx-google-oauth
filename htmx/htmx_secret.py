@@ -9,7 +9,7 @@ templates = Jinja2Templates(directory='templates')
 
 # Normal Response function
 @router.get("/content.secret1", response_class=HTMLResponse)
-async def content_secret1(request: Request, hx_request: Optional[str] = Header(None), session_id: Annotated[str | None, Cookie()] = None,):
+async def content_secret1(request: Request, hx_request: Optional[str] = Header(None)):
     if not hx_request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

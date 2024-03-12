@@ -66,9 +66,15 @@
 </nav>
 
 <script type="text/javascript">
-  const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
-  const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
+  document.querySelectorAll('[data-bs-toggle="popover"]').forEach(popoverTriggerEl => {
+    if (popoverTriggerEl._popover) {
+      popoverTriggerEl._popover.dispose();
+    }
+    popoverTriggerEl._popover = new bootstrap.Popover(popoverTriggerEl);
+  });
 </script>
+
+{% include 'auth_refresh_token.j2' %}
 
 <style>
   .navbar-toggler,

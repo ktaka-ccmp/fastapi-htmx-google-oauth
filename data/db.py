@@ -43,12 +43,13 @@ class Sessions(CacheStoreBase):
     __tablename__ = 'sessions'
     id = Column('id', Integer, primary_key = True, autoincrement = True)
     session_id = Column('session_id', String(254))
+    csrf_token = Column('csrf_token', String(254))
     user_id = Column('user_id', Integer)
     email = Column('email', String(254))
     expires = Column('expires', Integer)
 
 # schemas.py
-from pydantic import BaseModel, EmailStr, HttpUrl
+from pydantic import BaseModel, EmailStr, HttpUrl, FilePath
 
 class CustomerBase(BaseModel):
     id: int
@@ -64,13 +65,14 @@ class UserBase(BaseModel):
     disabled: bool
     admin: bool
     password: str | None
-    picture: HttpUrl | None
+    picture: HttpUrl | str | None
     class Config:
         from_attributes = True
 
 class SessionBase(BaseModel):
     id: int
     session_id: str
+    csrf_token: str
     user_id: int
     email: EmailStr
     expires: int

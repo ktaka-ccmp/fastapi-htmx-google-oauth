@@ -1,10 +1,10 @@
-from typing import Optional, Annotated
-from fastapi import APIRouter, Request, HTTPException, status, Depends, Header, Cookie
+from typing import Optional
+from fastapi import APIRouter, Request, HTTPException, status, Depends, Header
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse
 
 from sqlalchemy.orm import Session
-from data.db import Customer, get_db
+from data.db import Customer, get_db, get_cache
 
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')

@@ -1,0 +1,59 @@
+<input type="hidden" id="userToken" value="{{ userToken }}">
+
+<script>
+    (function () {
+        // Utility to safely get cookie values
+        const getCookieValue = name => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            return parts.length === 2 ? parts.pop().split(';').shift() : undefined;
+        };
+
+        // Main function to refresh the token
+        const do_refresh_token = () => {
+            const csrfToken = getCookieValue('csrf_token');
+            console.log("do_refresh_token csrf_token = ", csrfToken);
+            const userToken = document.getElementById('userToken').value;
+
+            htmx.ajax('GET', '{{ refresh_token_url }}', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-USER-TOKEN': userToken,
+                },
+                swap: 'none'
+            });
+        };
+
+        // Setup to monitor user activity
+        let userIsActive = false;
+        document.addEventListener('mousemove', () => userIsActive = true);
+        document.addEventListener('keypress', () => userIsActive = true);
+        document.addEventListener('scroll', () => userIsActive = true);
+
+        // Interval for checking user activity
+        const activityCheckInterval = 10000; // 10 seconds
+        window.clearInterval(window.userActivityInterval); // Clear existing interval if script is reloaded
+        window.userActivityInterval = setInterval(() => {
+            if (userIsActive) {
+                console.log('Activity detected, attempting to refresh token...');
+                do_refresh_token();
+                userIsActive = false;
+            }
+        }, activityCheckInterval);
+
+        // Interval for detecting changes in 'user_token' cookie
+        let lastUT = getCookieValue('user_token');
+        const tokenCheckInterval = 1000; // 1 second
+        window.clearInterval(window.tokenChangeInterval); // Clear existing interval if script is reloaded
+        window.tokenChangeInterval = setInterval(() => {
+            const currentUT = getCookieValue('user_token');
+            if (currentUT !== lastUT) {
+                console.log('Cookie user_token has changed, attempting to refresh token...');
+                do_refresh_token();
+                lastUT = currentUT;
+            }
+        }, tokenCheckInterval);
+
+    })();
+</script>
