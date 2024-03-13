@@ -117,7 +117,8 @@ async def refresh_token(response: Response,
     try:
         await csrf_verify(x_csrf_token, x_user_token, session_id, cs)
         new_session_id, new_csrf_token = mutate_session(response, session_id, cs, False)
-        response.headers["HX-Trigger"] = "ReloadNavbar"
+        if new_session_id != session_id:
+            response.headers["HX-Trigger"] = "ReloadNavbar"
         return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
     except HTTPException as e:
         response = JSONResponse(status_code=e.status_code, content={"detail": e.detail})
