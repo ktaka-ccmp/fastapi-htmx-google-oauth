@@ -44,7 +44,7 @@
 
         // Interval for detecting changes in 'user_token' cookie
         let lastUT = getCookieValue('user_token');
-        const tokenCheckInterval = 1000; // 1 second
+        const tokenCheckInterval = 2000; // 1 second
         window.clearInterval(window.tokenChangeInterval); // Clear existing interval if script is reloaded
         window.tokenChangeInterval = setInterval(() => {
             const currentUT = getCookieValue('user_token');

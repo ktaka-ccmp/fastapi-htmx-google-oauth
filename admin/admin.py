@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from data import db
 from admin import auth
+from config import settings
 
 router = APIRouter()
 
@@ -23,7 +24,7 @@ def login(response: Response, email: str = Form(...),
         return response
 
     if email == session["email"]:
-        max_age = 600
+        max_age = settings.session_max_age
         expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
         response = RedirectResponse(url="/docs",
                                     status_code=status.HTTP_303_SEE_OTHER)
