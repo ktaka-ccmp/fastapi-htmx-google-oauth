@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, BackgroundTasks, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from data.db import User, UserBase, Sessions
 from data.db import get_db, get_cache
 from admin.user import create as GetOrCreateUser
@@ -25,17 +26,13 @@ cookie_scheme = APIKeyCookie(name="session_id", description="Admin session_id is
 
 def get_session_by_session_id(session_id: str, cs: Session):
     try:
-        session=cs.query(Sessions).filter(Sessions.session_id==session_id).first().__dict__
-        session.pop('_sa_instance_state')
-        return session
-    except:
+        session = cs.query(Sessions).filter(Sessions.session_id == session_id).one()
+        return session.__dict__
+    except NoResultFound:
         return None
-
-def create_session(response: Response, user: UserBase, cs: Session):
-    user_id = user.id
-    email = user.email
-    session = new_session_cookie(response, cs, user_id, email)
-    return session
+    except SQLAlchemyError as e:
+        print(f"An error occurred while retrieving the session: {e}")
+        return None
 
 def hash_email(email: str):
     return hashlib.sha256(email.encode()).hexdigest()
@@ -81,7 +78,6 @@ def new_session_cookie(response: Response, cs: Session, user_id: int, email: str
                         samesite="Lax", secure=True, max_age=max_age, expires=expires,)
 
     session = session_entry.__dict__.copy()
-    session.pop('_sa_instance_state')
     print("new_session_cookie: ", session)
     return session
 
@@ -121,8 +117,6 @@ def delete_session(session_id: str, cs: Session):
 
 def get_user_by_user_id(user_id: int, ds: Session):
     user=ds.query(User).filter(User.id==user_id).first().__dict__
-    user.pop('_sa_instance_state')
-    # print("get_user_by_user_id -> user: ", user)
     return user
 
 async def get_current_user(session_id: str = Depends(cookie_scheme),
@@ -203,7 +197,8 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         return  Response("Error: Failed to GetOrCreateUser for the JWT")
 
     response = JSONResponse({"Authenticated_as": user.name})
-    create_session(response, user, cs)
+    new_session_cookie(response, cs, user.id, user.email)
+
     response.headers["HX-Trigger"] = "ReloadNavbar"
 
     return response
@@ -314,7 +309,7 @@ async def refresh_token(response: Response,
         if new_session != session:
             print("Session mutated: ", new_session)
             response.headers["HX-Trigger"] = "ReloadNavbar"
-        return {"ok": True, "new_session": new_session}
+        return {"ok": True, "new_session_id": new_session["session_id"]}
     except HTTPException as e:
         response = JSONResponse(status_code=e.status_code, content={"detail": e.detail})
         response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
@@ -337,12 +332,17 @@ async def logout_content(request: Request,
 
 def do_cleanup_sessions(cs: Session):
     now = int(datetime.now().timestamp())
-    session=cs.query(Sessions).filter(Sessions.expires<=now).all()
-    for row in session:
-        print("do_cleanup_sessions: ", row.__dict__)
-    session=cs.query(Sessions).filter(Sessions.expires<=now).delete()
-    cs.commit()
-    print("Finished do_cleanup_sessions")
+    try:
+        cs.begin()
+        expired_sessions = cs.query(Sessions).filter(Sessions.expires <= now).all()
+        for session in expired_sessions:
+            print("Cleaning up expired session: ", session.session_id)
+            cs.delete(session)
+        cs.commit()
+        print("Expired sessions cleaned up successfully.")
+    except SQLAlchemyError as e:
+        cs.rollback()
+        print(f"An error occurred while cleaning up sessions: {e}")
 
 @router.get("/cleanup_sessions")
 async def cleanup_sessions(
