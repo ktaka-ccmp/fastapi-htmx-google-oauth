@@ -40,8 +40,8 @@ def create_session(response: Response, user: UserBase, cs: Session):
 def hash_email(email: str):
     return hashlib.sha256(email.encode()).hexdigest()
 
-def mutate_session(response: Response, old_session_id: str, cs: Session, immediate: bool = False):
-    old_session = get_session_by_session_id(old_session_id, cs)
+def mutate_session(response: Response, old_session: dict, cs: Session, immediate: bool = False):
+    old_session_id = old_session["session_id"]
     if not old_session:
         raise HTTPException(status_code=404, detail="Session not found")
     if old_session["email"] == settings.admin_email:
@@ -114,9 +114,13 @@ async def refresh_token(response: Response,
         response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
         return response
 
+    session = get_session_by_session_id(session_id, cs)
+    if not session:
+        raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
+
     try:
-        await csrf_verify(x_csrf_token, x_user_token, session_id, cs)
-        new_session_id, new_csrf_token = mutate_session(response, session_id, cs, False)
+        await csrf_verify(x_csrf_token, x_user_token, session, cs)
+        new_session_id, new_csrf_token = mutate_session(response, session, cs, False)
         if new_session_id != session_id:
             response.headers["HX-Trigger"] = "ReloadNavbar"
         return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
@@ -125,12 +129,8 @@ async def refresh_token(response: Response,
         response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
         return response
 
-async def csrf_verify(csrf_token: str, user_token: str, session_id: str, cs: Session):
-    session = get_session_by_session_id(session_id,cs)
-    # print("#### csrf_verify: ", user_token, hash_email(session["email"]))
-    if not session:
-        raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
-    elif csrf_token == session['csrf_token'] and user_token == hash_email(session["email"]):
+async def csrf_verify(csrf_token: str, user_token: str, session: dict, cs: Session):
+    if csrf_token == session['csrf_token'] and user_token == hash_email(session["email"]):
         return csrf_token
     elif csrf_token != session['csrf_token']:
         raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
