@@ -34,30 +34,29 @@ def get_session_by_session_id(session_id: str, cs: Session):
 def create_session(response: Response, user: UserBase, cs: Session):
     user_id = user.id
     email = user.email
-    session_id, csrf_token = new_session_cookie(response, cs, user_id, email)
-    return session_id, csrf_token
+    session = new_session_cookie(response, cs, user_id, email)
+    return session
 
 def hash_email(email: str):
     return hashlib.sha256(email.encode()).hexdigest()
 
 def mutate_session(response: Response, old_session: dict, cs: Session, immediate: bool = False):
-    old_session_id = old_session["session_id"]
     if not old_session:
         raise HTTPException(status_code=404, detail="Session not found")
     if old_session["email"] == settings.admin_email:
-        return old_session_id, old_session["csrf_token"]
+        return old_session
 
     age_left = old_session["expires"] - int(datetime.now(timezone.utc).timestamp())
     if not immediate and age_left*2 > settings.session_max_age:
         print("Session still has much time: ", age_left, " seconds left.")
-        return old_session_id, old_session["csrf_token"]
+        return old_session
 
     print("Session expires soon in", age_left, ". Mutating the session.")
     user_id = old_session["user_id"]
     email = old_session["email"]
-    session_id, csrf_token = new_session_cookie(response, cs, user_id, email)
-    delete_session(old_session_id, cs)
-    return session_id, csrf_token
+    session = new_session_cookie(response, cs, user_id, email)
+    delete_session(old_session["session_id"], cs)
+    return session
 
 def new_session_cookie(response: Response, cs: Session, user_id: int, email: str):
     session_id = secrets.token_urlsafe(64)
@@ -81,7 +80,10 @@ def new_session_cookie(response: Response, cs: Session, user_id: int, email: str
     response.set_cookie(key="user_token", value=hash_email(email), httponly=False,
                         samesite="Lax", secure=True, max_age=max_age, expires=expires,)
 
-    return session_id, csrf_token
+    session = session_entry.__dict__.copy()
+    session.pop('_sa_instance_state')
+    print("new_session_cookie: ", session)
+    return session
 
 def delete_session_cookie(response: Response, session_id: str, cs: Session):
     if session_id:
@@ -95,39 +97,6 @@ def delete_session_cookie(response: Response, session_id: str, cs: Session):
     response.set_cookie(key="user_token", value="", httponly=False,
                         samesite="Lax", secure=True, max_age=max_age, expires=expires,)
     return response
-
-@router.get("/refresh_token")
-async def refresh_token(response: Response,
-                  hx_request: Annotated[str | None, Header()] = None,
-                  session_id: Annotated[str | None, Cookie()] = None,
-                  x_csrf_token: Annotated[str | None, Header()] = None,
-                  x_user_token: Annotated[str | None, Header()] = None,
-                  cs: Session = Depends(get_cache)):
-
-    if not hx_request:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only HX request is allowed to this end point.")
-
-    if not session_id:
-        response = Response(status_code=status.HTTP_204_NO_CONTENT)
-        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
-        return response
-
-    session = get_session_by_session_id(session_id, cs)
-    if not session:
-        raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
-
-    try:
-        await csrf_verify(x_csrf_token, x_user_token, session, cs)
-        new_session_id, new_csrf_token = mutate_session(response, session, cs, False)
-        if new_session_id != session_id:
-            response.headers["HX-Trigger"] = "ReloadNavbar"
-        return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
-    except HTTPException as e:
-        response = JSONResponse(status_code=e.status_code, content={"detail": e.detail})
-        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
-        return response
 
 async def csrf_verify(csrf_token: str, user_token: str, session: dict, cs: Session):
     if csrf_token == session['csrf_token'] and user_token == hash_email(session["email"]):
@@ -316,6 +285,40 @@ async def check(response: Response,
         return response
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@router.get("/refresh_token")
+async def refresh_token(response: Response,
+                  hx_request: Annotated[str | None, Header()] = None,
+                  session_id: Annotated[str | None, Cookie()] = None,
+                  x_csrf_token: Annotated[str | None, Header()] = None,
+                  x_user_token: Annotated[str | None, Header()] = None,
+                  cs: Session = Depends(get_cache)):
+
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point.")
+
+    if not session_id:
+        response = Response(status_code=status.HTTP_204_NO_CONTENT)
+        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+        return response
+
+    session = get_session_by_session_id(session_id, cs)
+    if not session:
+        raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
+
+    try:
+        await csrf_verify(x_csrf_token, x_user_token, session, cs)
+        new_session = mutate_session(response, session, cs, False)
+        if new_session != session:
+            print("Session mutated: ", new_session)
+            response.headers["HX-Trigger"] = "ReloadNavbar"
+        return {"ok": True, "new_session": new_session}
+    except HTTPException as e:
+        response = JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+        return response
 
 @router.get("/logout_content")
 async def logout_content(request: Request,
