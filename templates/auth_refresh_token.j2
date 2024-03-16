@@ -12,11 +12,10 @@
         // Main function to refresh the token
         const do_refresh_token = () => {
             const csrfToken = getCookieValue('csrf_token');
-            const sessionId = getCookieValue('session_id');
             console.log("do_refresh_token, csrf_token: ", csrfToken);
 
-            if (!csrfToken || !sessionId) {
-                console.log("Skipping refresh token due to missing CSRF token or session ID.");
+            if (!csrfToken) {
+                console.log("Skipping refresh token due to missing CSRF token");
                 return; // Exit the function early
             }
 
