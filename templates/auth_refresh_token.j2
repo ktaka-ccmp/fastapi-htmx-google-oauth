@@ -12,7 +12,14 @@
         // Main function to refresh the token
         const do_refresh_token = () => {
             const csrfToken = getCookieValue('csrf_token');
+            const sessionId = getCookieValue('session_id');
             console.log("do_refresh_token, csrf_token: ", csrfToken);
+
+            if (!csrfToken || !sessionId) {
+                console.log("Skipping refresh token due to missing CSRF token or session ID.");
+                return; // Exit the function early
+            }
+
             const userToken = document.getElementById('userToken').value;
 
             htmx.ajax('GET', '{{ refresh_token_url }}', {
@@ -26,7 +33,7 @@
         };
 
         const do_mutate_user = () => {
-        //    const userToken = document.getElementById('userToken').value; // old user
+            //    const userToken = document.getElementById('userToken').value; // old user
             const userToken = getCookieValue('user_token');
             console.log("do_mutate_user, new user: ", userToken);
 
