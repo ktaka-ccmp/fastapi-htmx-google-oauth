@@ -94,11 +94,19 @@ def delete_session_cookie(response: Response, session_id: str, cs: Session):
                         samesite="Lax", secure=True, max_age=max_age, expires=expires,)
     return response
 
-async def csrf_verify(csrf_token: str, user_token: str, session: dict, cs: Session):
-    if csrf_token == session['csrf_token'] and user_token == hash_email(session["email"]):
+async def csrf_verify(csrf_token: str, session: dict):
+    print("### Debug: csrf_verify: ", csrf_token)
+    if csrf_token == session['csrf_token']:
         return csrf_token
     elif csrf_token != session['csrf_token']:
         raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
+    else:
+        raise HTTPException(status_code=403, detail="Unexpected things happend.")
+
+async def user_verify(user_token: str, session: dict):
+    print("### Debug: user_verify: ", user_token)
+    if user_token == hash_email(session["email"]):
+        return user_token
     elif user_token != hash_email(session["email"]):
         raise HTTPException(status_code=403, detail="USER token: "+user_token+" did not match the record.")
     else:
@@ -304,7 +312,8 @@ async def refresh_token(response: Response,
         raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
 
     try:
-        await csrf_verify(x_csrf_token, x_user_token, session, cs)
+        await csrf_verify(x_csrf_token, session)
+        await user_verify(x_user_token, session)
         new_session = mutate_session(response, session, cs, False)
         if new_session != session:
             print("Session mutated: ", new_session)
