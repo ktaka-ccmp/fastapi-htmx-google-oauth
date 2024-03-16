@@ -12,13 +12,27 @@
         // Main function to refresh the token
         const do_refresh_token = () => {
             const csrfToken = getCookieValue('csrf_token');
-            console.log("do_refresh_token csrf_token = ", csrfToken);
+            console.log("do_refresh_token, csrf_token: ", csrfToken);
             const userToken = document.getElementById('userToken').value;
 
             htmx.ajax('GET', '{{ refresh_token_url }}', {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'X-USER-TOKEN': userToken,
+                },
+                swap: 'none'
+            });
+        };
+
+        const do_mutate_user = () => {
+        //    const userToken = document.getElementById('userToken').value; // old user
+            const userToken = getCookieValue('user_token');
+            console.log("do_mutate_user, new user: ", userToken);
+
+            htmx.ajax('GET', '{{ mutate_user_url }}', {
+                headers: {
+                    'Content-Type': 'application/json',
                     'X-USER-TOKEN': userToken,
                 },
                 swap: 'none'
@@ -50,7 +64,7 @@
             const currentUT = getCookieValue('user_token');
             if (currentUT !== lastUT) {
                 console.log('Cookie user_token has changed, attempting to refresh token...');
-                do_refresh_token();
+                do_mutate_user();
                 lastUT = currentUT;
             }
         }, tokenCheckInterval);

@@ -224,7 +224,7 @@ async def logout(response: Response,
             )
 
     response = JSONResponse({"message": "user logged out"})
-    response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+    response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
     delete_session_cookie(response, session_id, cs)
     return response
 
@@ -248,9 +248,10 @@ async def auth_navbar(request: Request,
         logout_url = "/auth/logout"
         icon_url = "/img/logout.png"
         refresh_token_url = "/auth/refresh_token"
+        mutate_user_url = "/auth/mutate_user"
 
         context = {"request": request, "logout_url":logout_url,
-                   "icon_url": icon_url, "refresh_token_url": refresh_token_url,
+                   "icon_url": icon_url, "refresh_token_url": refresh_token_url, "mutate_user_url": mutate_user_url,
                    "name": user.name, "picture": user.picture, "userToken": hash_email(user.email)}
         return templates.TemplateResponse("auth_navbar.logout.j2", context)
 
@@ -262,9 +263,11 @@ async def auth_navbar(request: Request,
     login_url = "/auth/login"
     icon_url = "/img/icon.png"
     refresh_token_url = "/auth/refresh_token"
+    mutate_user_url = "/auth/mutate_user"
 
     context = {"request": request, "client_id": client_id, "login_url": login_url,
-               "icon_url": icon_url, "refresh_token_url": refresh_token_url, "userToken": "anonymous"}
+               "icon_url": icon_url, "refresh_token_url": refresh_token_url, "mutate_user_url": mutate_user_url,
+               "userToken": "anonymous"}
     response = templates.TemplateResponse("auth_navbar.login.j2", context)
     return response
 
@@ -284,7 +287,7 @@ async def check(response: Response,
 
     if not user:
         response = JSONResponse({"message": "user logged out"})
-        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
         return response
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -304,7 +307,7 @@ async def refresh_token(response: Response,
 
     if not session_id:
         response = Response(status_code=status.HTTP_204_NO_CONTENT)
-        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+        # response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
         return response
 
     session = get_session_by_session_id(session_id, cs)
@@ -321,8 +324,23 @@ async def refresh_token(response: Response,
         return {"ok": True, "new_session_id": new_session["session_id"]}
     except HTTPException as e:
         response = JSONResponse(status_code=e.status_code, content={"detail": e.detail})
-        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
         return response
+
+@router.get("/mutate_user")
+async def refresh_token(
+                  hx_request: Annotated[str | None, Header()] = None,
+                  x_user_token: Annotated[str | None, Header()] = None,
+                  ):
+
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point.")
+
+    response = JSONResponse({"User mutated, new user": x_user_token})
+    response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
+    return response
 
 @router.get("/logout_content")
 async def logout_content(request: Request,
