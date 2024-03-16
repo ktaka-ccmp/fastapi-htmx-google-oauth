@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, BackgroundTasks, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from data.db import User, UserBase, Sessions
 from data.db import get_db, get_cache
 from admin.user import create as GetOrCreateUser
@@ -25,39 +26,34 @@ cookie_scheme = APIKeyCookie(name="session_id", description="Admin session_id is
 
 def get_session_by_session_id(session_id: str, cs: Session):
     try:
-        session=cs.query(Sessions).filter(Sessions.session_id==session_id).first().__dict__
-        session.pop('_sa_instance_state')
-        return session
-    except:
+        session = cs.query(Sessions).filter(Sessions.session_id == session_id).one()
+        return session.__dict__
+    except NoResultFound:
         return None
-
-def create_session(response: Response, user: UserBase, cs: Session):
-    user_id = user.id
-    email = user.email
-    session_id, csrf_token = new_session_cookie(response, cs, user_id, email)
-    return session_id, csrf_token
+    except SQLAlchemyError as e:
+        print(f"An error occurred while retrieving the session: {e}")
+        return None
 
 def hash_email(email: str):
     return hashlib.sha256(email.encode()).hexdigest()
 
-def mutate_session(response: Response, old_session_id: str, cs: Session, immediate: bool = False):
-    old_session = get_session_by_session_id(old_session_id, cs)
+def mutate_session(response: Response, old_session: dict, cs: Session, immediate: bool = False):
     if not old_session:
         raise HTTPException(status_code=404, detail="Session not found")
     if old_session["email"] == settings.admin_email:
-        return old_session_id, old_session["csrf_token"]
+        return old_session
 
     age_left = old_session["expires"] - int(datetime.now(timezone.utc).timestamp())
     if not immediate and age_left*2 > settings.session_max_age:
         print("Session still has much time: ", age_left, " seconds left.")
-        return old_session_id, old_session["csrf_token"]
+        return old_session
 
     print("Session expires soon in", age_left, ". Mutating the session.")
     user_id = old_session["user_id"]
     email = old_session["email"]
-    session_id, csrf_token = new_session_cookie(response, cs, user_id, email)
-    delete_session(old_session_id, cs)
-    return session_id, csrf_token
+    session = new_session_cookie(response, cs, user_id, email)
+    delete_session(old_session["session_id"], cs)
+    return session
 
 def new_session_cookie(response: Response, cs: Session, user_id: int, email: str):
     session_id = secrets.token_urlsafe(64)
@@ -81,7 +77,9 @@ def new_session_cookie(response: Response, cs: Session, user_id: int, email: str
     response.set_cookie(key="user_token", value=hash_email(email), httponly=False,
                         samesite="Lax", secure=True, max_age=max_age, expires=expires,)
 
-    return session_id, csrf_token
+    session = session_entry.__dict__.copy()
+    print("new_session_cookie: ", session)
+    return session
 
 def delete_session_cookie(response: Response, session_id: str, cs: Session):
     if session_id:
@@ -96,43 +94,19 @@ def delete_session_cookie(response: Response, session_id: str, cs: Session):
                         samesite="Lax", secure=True, max_age=max_age, expires=expires,)
     return response
 
-@router.get("/refresh_token")
-async def refresh_token(response: Response,
-                  hx_request: Annotated[str | None, Header()] = None,
-                  session_id: Annotated[str | None, Cookie()] = None,
-                  x_csrf_token: Annotated[str | None, Header()] = None,
-                  x_user_token: Annotated[str | None, Header()] = None,
-                  cs: Session = Depends(get_cache)):
-
-    if not hx_request:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only HX request is allowed to this end point.")
-
-    if not session_id:
-        response = Response(status_code=status.HTTP_204_NO_CONTENT)
-        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
-        return response
-
-    try:
-        await csrf_verify(x_csrf_token, x_user_token, session_id, cs)
-        new_session_id, new_csrf_token = mutate_session(response, session_id, cs, False)
-        response.headers["HX-Trigger"] = "ReloadNavbar"
-        return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
-    except HTTPException as e:
-        response = JSONResponse(status_code=e.status_code, content={"detail": e.detail})
-        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
-        return response
-
-async def csrf_verify(csrf_token: str, user_token: str, session_id: str, cs: Session):
-    session = get_session_by_session_id(session_id,cs)
-    # print("#### csrf_verify: ", user_token, hash_email(session["email"]))
-    if not session:
-        raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
-    elif csrf_token == session['csrf_token'] and user_token == hash_email(session["email"]):
+async def csrf_verify(csrf_token: str, session: dict):
+    print("### Debug: csrf_verify: ", csrf_token)
+    if csrf_token == session['csrf_token']:
         return csrf_token
     elif csrf_token != session['csrf_token']:
         raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
+    else:
+        raise HTTPException(status_code=403, detail="Unexpected things happend.")
+
+async def user_verify(user_token: str, session: dict):
+    print("### Debug: user_verify: ", user_token)
+    if user_token == hash_email(session["email"]):
+        return user_token
     elif user_token != hash_email(session["email"]):
         raise HTTPException(status_code=403, detail="USER token: "+user_token+" did not match the record.")
     else:
@@ -151,8 +125,6 @@ def delete_session(session_id: str, cs: Session):
 
 def get_user_by_user_id(user_id: int, ds: Session):
     user=ds.query(User).filter(User.id==user_id).first().__dict__
-    user.pop('_sa_instance_state')
-    # print("get_user_by_user_id -> user: ", user)
     return user
 
 async def get_current_user(session_id: str = Depends(cookie_scheme),
@@ -233,7 +205,8 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         return  Response("Error: Failed to GetOrCreateUser for the JWT")
 
     response = JSONResponse({"Authenticated_as": user.name})
-    create_session(response, user, cs)
+    new_session_cookie(response, cs, user.id, user.email)
+
     response.headers["HX-Trigger"] = "ReloadNavbar"
 
     return response
@@ -251,7 +224,7 @@ async def logout(response: Response,
             )
 
     response = JSONResponse({"message": "user logged out"})
-    response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+    response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
     delete_session_cookie(response, session_id, cs)
     return response
 
@@ -275,9 +248,10 @@ async def auth_navbar(request: Request,
         logout_url = "/auth/logout"
         icon_url = "/img/logout.png"
         refresh_token_url = "/auth/refresh_token"
+        mutate_user_url = "/auth/mutate_user"
 
         context = {"request": request, "logout_url":logout_url,
-                   "icon_url": icon_url, "refresh_token_url": refresh_token_url,
+                   "icon_url": icon_url, "refresh_token_url": refresh_token_url, "mutate_user_url": mutate_user_url,
                    "name": user.name, "picture": user.picture, "userToken": hash_email(user.email)}
         return templates.TemplateResponse("auth_navbar.logout.j2", context)
 
@@ -289,9 +263,11 @@ async def auth_navbar(request: Request,
     login_url = "/auth/login"
     icon_url = "/img/icon.png"
     refresh_token_url = "/auth/refresh_token"
+    mutate_user_url = "/auth/mutate_user"
 
     context = {"request": request, "client_id": client_id, "login_url": login_url,
-               "icon_url": icon_url, "refresh_token_url": refresh_token_url, "userToken": "anonymous"}
+               "icon_url": icon_url, "refresh_token_url": refresh_token_url, "mutate_user_url": mutate_user_url,
+               "userToken": "anonymous"}
     response = templates.TemplateResponse("auth_navbar.login.j2", context)
     return response
 
@@ -311,17 +287,62 @@ async def check(response: Response,
 
     if not user:
         response = JSONResponse({"message": "user logged out"})
-        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutContent"
+        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
         return response
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+@router.get("/refresh_token")
+async def refresh_token(response: Response,
+                  hx_request: Annotated[str | None, Header()] = None,
+                  session_id: Annotated[str | None, Cookie()] = None,
+                  x_csrf_token: Annotated[str | None, Header()] = None,
+                  x_user_token: Annotated[str | None, Header()] = None,
+                  cs: Session = Depends(get_cache)):
+
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point.")
+
+    if not session_id:
+        raise HTTPException(status_code=403, detail="No session_id in the request")
+
+    session = get_session_by_session_id(session_id, cs)
+    if not session:
+        raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
+
+    try:
+        await csrf_verify(x_csrf_token, session)
+        await user_verify(x_user_token, session)
+        new_session = mutate_session(response, session, cs, False)
+        if new_session != session:
+            print("Session mutated: ", new_session)
+            response.headers["HX-Trigger"] = "ReloadNavbar"
+        return {"ok": True, "new_session_id": new_session["session_id"]}
+    except HTTPException as e:
+        response = JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+        response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
+        return response
+
+@router.get("/mutate_user")
+async def refresh_token(
+                  hx_request: Annotated[str | None, Header()] = None,
+                  x_user_token: Annotated[str | None, Header()] = None,
+                  ):
+
+    if not hx_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only HX request is allowed to this end point.")
+
+    response = JSONResponse({"User mutated, new user": x_user_token})
+    response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
+    return response
+
 @router.get("/logout_content")
 async def logout_content(request: Request,
-                         session_id: Annotated[str|None, Cookie()] = None,
-                         hx_request: Annotated[str|None, Header()] = None,
-                         ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
-
+                         hx_request: Annotated[str|None, Header()] = None):
     if not hx_request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -333,12 +354,17 @@ async def logout_content(request: Request,
 
 def do_cleanup_sessions(cs: Session):
     now = int(datetime.now().timestamp())
-    session=cs.query(Sessions).filter(Sessions.expires<=now).all()
-    for row in session:
-        print("do_cleanup_sessions: ", row.__dict__)
-    session=cs.query(Sessions).filter(Sessions.expires<=now).delete()
-    cs.commit()
-    print("Finished do_cleanup_sessions")
+    try:
+        cs.begin()
+        expired_sessions = cs.query(Sessions).filter(Sessions.expires <= now).all()
+        for session in expired_sessions:
+            print("Cleaning up expired session: ", session.session_id)
+            cs.delete(session)
+        cs.commit()
+        print("Expired sessions cleaned up successfully.")
+    except SQLAlchemyError as e:
+        cs.rollback()
+        print(f"An error occurred while cleaning up sessions: {e}")
 
 @router.get("/cleanup_sessions")
 async def cleanup_sessions(

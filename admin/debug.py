@@ -42,9 +42,13 @@ def refresh_token(response: Response,
                   session_id: Annotated[str | None, Cookie()] = None,
                   cs: Session = Depends(get_cache)):
     # print("session_id: ", session_id)
+    session = auth.get_session_by_session_id(session_id, cs)
+    if not session:
+        raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
+
     try:
-        new_session_id, new_csrf_token = auth.mutate_session(response, session_id, cs, True)
-        return {"ok": True, "new_token": new_session_id, "csrf_token": new_csrf_token}
+        new_session = auth.mutate_session(response, session, cs, False)
+        return {"ok": True, "new_token": new_session["session_id"], "csrf_token": new_session["csrf_token"]}
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
 
@@ -57,8 +61,8 @@ async def csrf_js_get(request: Request):
 async def csrf_js_post(x_csrf_token: Annotated[str | None, Header()] = None,
                  session_id: Annotated[str | None, Cookie()] = None,
                  cs: Session = Depends(get_cache)):
-    csrf_token = await auth.csrf_verify(x_csrf_token, session_id, cs)
-    return {"ok": True, "csrf_token": csrf_token}
+    csrf_token = x_csrf_token
+    return await csrf_post(session_id, cs, csrf_token)
 
 @router.get("/csrf_html", response_class=HTMLResponse)
 async def csrf_html_get(request: Request,
@@ -71,5 +75,11 @@ async def csrf_html_get(request: Request,
 async def csrf_html_post(csrf_token: Annotated[str | None, Form()] = None,
                          session_id: Annotated[str | None, Cookie()] = None,
                          cs: Session = Depends(get_cache)):
-    csrf_token = await auth.csrf_verify(csrf_token, session_id, cs)
+    return await csrf_post(session_id, cs, csrf_token)
+
+async def csrf_post(session_id, cs, csrf_token):
+    session = auth.get_session_by_session_id(session_id, cs)
+    if not session:
+        raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
+    csrf_token = await auth.csrf_verify(csrf_token, session)
     return {"ok": True, "csrf_token": csrf_token}
