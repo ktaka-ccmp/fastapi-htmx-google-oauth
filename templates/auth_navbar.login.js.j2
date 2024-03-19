@@ -3,6 +3,7 @@
         client_id: "{{ client_id }}",
         callback: onSignIn,
         ux_mode: "popup",
+        use_fedcm_for_prompt: true,
     });
 
     google.accounts.id.renderButton(document.getElementById("signInDiv"), {
