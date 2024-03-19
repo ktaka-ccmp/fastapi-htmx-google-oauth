@@ -107,7 +107,7 @@ def delete_session(session_id: str, cs: Session):
     cs.delete(session)
     cs.commit()
 
-async def csrf_verify(csrf_token: str, session: dict):
+def csrf_verify(csrf_token: str, session: dict):
     print("### Debug: csrf_verify: ", csrf_token)
     if csrf_token == session['csrf_token']:
         return csrf_token
@@ -116,7 +116,7 @@ async def csrf_verify(csrf_token: str, session: dict):
     else:
         raise HTTPException(status_code=403, detail="Unexpected things happend.")
 
-async def user_verify(user_token: str, session: dict):
+def user_verify(user_token: str, session: dict):
     print("### Debug: user_verify: ", user_token)
     if user_token == hash_email(session["email"]):
         return user_token
@@ -317,8 +317,8 @@ async def refresh_token(response: Response,
         raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
 
     try:
-        await csrf_verify(x_csrf_token, session)
-        await user_verify(x_user_token, session)
+        csrf_verify(x_csrf_token, session)
+        user_verify(x_user_token, session)
         new_session = mutate_session(response, session, cs, False)
         if new_session != session:
             print("Session mutated, new_session: ", new_session)
