@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 
 from sqlalchemy.orm import Session
-from data.db import Customer, get_db, get_cache
+from data.db import Customer, get_db
 
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
