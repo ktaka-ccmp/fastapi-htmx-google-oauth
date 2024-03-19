@@ -81,5 +81,5 @@ async def csrf_post(session_id, cs, csrf_token):
     session = auth.get_session_by_session_id(session_id, cs)
     if not session:
         raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
-    csrf_token = await auth.csrf_verify(csrf_token, session)
+    csrf_token = auth.csrf_verify(csrf_token, session)
     return {"ok": True, "csrf_token": csrf_token}

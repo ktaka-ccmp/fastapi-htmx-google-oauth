@@ -49,41 +49,26 @@ def mutate_session(response: Response, old_session: dict, cs: Session, immediate
         return old_session
 
     print("Session expires soon in", age_left, ". Mutating the session.")
-    user_id = old_session["user_id"]
-    email = old_session["email"]
-    session = new_session_cookie(response, cs, user_id, email)
+    session = new_session(old_session["user_id"], old_session["email"], cs)
+    new_cookie(response, session)
     delete_session(old_session["session_id"], cs)
     return session
 
-def new_session_cookie(response: Response, cs: Session, user_id: int, email: str):
-    session_id = secrets.token_urlsafe(64)
-    csrf_token = secrets.token_urlsafe(32)
-    session = get_session_by_session_id(session_id, cs)
-    if session:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
+def new_cookie(response: Response, session: dict):
+    if not session:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No session provided")
 
     max_age = settings.session_max_age
-    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
-    session_entry=Sessions(session_id=session_id, csrf_token=csrf_token,
-                           user_id=user_id, email=email, expires=int(expires.timestamp()))
-    cs.add(session_entry)
-    cs.commit()
-    cs.refresh(session_entry)
+    # !!! Warining; It is very important to set httponly=True for the session_id cookie!!!
+    response.set_cookie(key="session_id", value=session["session_id"], httponly=True,
+                        samesite="Lax", secure=True, max_age=max_age, expires=session["expires"])
+    response.set_cookie(key="csrf_token", value=session["csrf_token"], httponly=False,
+                        samesite="Lax", secure=True, max_age=max_age, expires=session["expires"])
+    response.set_cookie(key="user_token", value=hash_email(session["email"]), httponly=False,
+                        samesite="Lax", secure=True, max_age=max_age, expires=session["expires"])
+    return response
 
-    response.set_cookie(key="session_id", value=session_id, httponly=True,
-                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
-    response.set_cookie(key="csrf_token", value=csrf_token, httponly=False,
-                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
-    response.set_cookie(key="user_token", value=hash_email(email), httponly=False,
-                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
-
-    session = session_entry.__dict__.copy()
-    print("new_session_cookie: ", session)
-    return session
-
-def delete_session_cookie(response: Response, session_id: str, cs: Session):
-    if session_id:
-        delete_session(session_id, cs)
+def delete_cookie(response: Response):
     max_age = 0
     expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
     response.set_cookie(key="session_id", value="", httponly=True,
@@ -94,23 +79,22 @@ def delete_session_cookie(response: Response, session_id: str, cs: Session):
                         samesite="Lax", secure=True, max_age=max_age, expires=expires,)
     return response
 
-async def csrf_verify(csrf_token: str, session: dict):
-    print("### Debug: csrf_verify: ", csrf_token)
-    if csrf_token == session['csrf_token']:
-        return csrf_token
-    elif csrf_token != session['csrf_token']:
-        raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
-    else:
-        raise HTTPException(status_code=403, detail="Unexpected things happend.")
+def new_session(user_id: int, email: str, cs: Session):
+    session_id = secrets.token_urlsafe(64)
+    csrf_token = secrets.token_urlsafe(32)
+    session = get_session_by_session_id(session_id, cs)
 
-async def user_verify(user_token: str, session: dict):
-    print("### Debug: user_verify: ", user_token)
-    if user_token == hash_email(session["email"]):
-        return user_token
-    elif user_token != hash_email(session["email"]):
-        raise HTTPException(status_code=403, detail="USER token: "+user_token+" did not match the record.")
-    else:
-        raise HTTPException(status_code=403, detail="Unexpected things happend.")
+    if session:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
+
+    max_age = settings.session_max_age
+    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
+    session_entry=Sessions(session_id=session_id, csrf_token=csrf_token,
+                           user_id=user_id, email=email, expires=int(expires.timestamp()))
+    cs.add(session_entry)
+    cs.commit()
+    cs.refresh(session_entry)
+    return session_entry.__dict__
 
 def delete_session(session_id: str, cs: Session):
     session=cs.query(Sessions).filter(Sessions.session_id==session_id).first()
@@ -122,6 +106,24 @@ def delete_session(session_id: str, cs: Session):
     print("delete_session: ", session.__dict__)
     cs.delete(session)
     cs.commit()
+
+def csrf_verify(csrf_token: str, session: dict):
+    print("### Debug: csrf_verify: ", csrf_token)
+    if csrf_token == session['csrf_token']:
+        return csrf_token
+    elif csrf_token != session['csrf_token']:
+        raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
+    else:
+        raise HTTPException(status_code=403, detail="Unexpected things happend.")
+
+def user_verify(user_token: str, session: dict):
+    print("### Debug: user_verify: ", user_token)
+    if user_token == hash_email(session["email"]):
+        return user_token
+    elif user_token != hash_email(session["email"]):
+        raise HTTPException(status_code=403, detail="USER token: "+user_token+" did not match the record.")
+    else:
+        raise HTTPException(status_code=403, detail="Unexpected things happend.")
 
 def get_user_by_user_id(user_id: int, ds: Session):
     user=ds.query(User).filter(User.id==user_id).first().__dict__
@@ -205,7 +207,8 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         return  Response("Error: Failed to GetOrCreateUser for the JWT")
 
     response = JSONResponse({"Authenticated_as": user.name})
-    new_session_cookie(response, cs, user.id, user.email)
+    session = new_session(user.id, user.email, cs)
+    new_cookie(response, session)
 
     response.headers["HX-Trigger"] = "ReloadNavbar"
 
@@ -225,7 +228,8 @@ async def logout(response: Response,
 
     response = JSONResponse({"message": "user logged out"})
     response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
-    delete_session_cookie(response, session_id, cs)
+    delete_session(session_id, cs)
+    delete_cookie(response)
     return response
 
 @router.get("/auth_navbar", response_class=HTMLResponse)
@@ -313,11 +317,11 @@ async def refresh_token(response: Response,
         raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
 
     try:
-        await csrf_verify(x_csrf_token, session)
-        await user_verify(x_user_token, session)
+        csrf_verify(x_csrf_token, session)
+        user_verify(x_user_token, session)
         new_session = mutate_session(response, session, cs, False)
         if new_session != session:
-            print("Session mutated: ", new_session)
+            print("Session mutated, new_session: ", new_session)
             response.headers["HX-Trigger"] = "ReloadNavbar"
         return {"ok": True, "new_session_id": new_session["session_id"]}
     except HTTPException as e:
