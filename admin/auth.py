@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from data.db import User, UserBase, Sessions
-from data.db import get_db, get_cache
+from data.db import get_db, get_cache, SessionCACHE
 from admin.user import create as GetOrCreateUser
 
 from typing import Annotated
@@ -95,6 +95,33 @@ def new_session(user_id: int, email: str, cs: Session):
     cs.commit()
     cs.refresh(session_entry)
     return session_entry.__dict__
+
+# async def read_items(commons: Annotated[dict, Depends(common_parameters)]):
+# def new_session_test(user_id: int, email: str, cs: Annotated[Session, Depends(get_cache)]):
+# def new_session_test(user_id: int, email: str, cs: Session=Depends(get_cache)):
+from contextlib import contextmanager
+@contextmanager
+def get_cache_test():
+    cs = SessionCACHE()
+    try:
+        yield cs
+    finally:
+        cs.close()
+
+def new_session_test(user_id: int, email: str):
+    session_id = secrets.token_urlsafe(64)
+    csrf_token = secrets.token_urlsafe(32)
+    max_age = settings.session_max_age
+    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
+    session_entry=Sessions(session_id=session_id, csrf_token=csrf_token,
+                           user_id=user_id, email=email, expires=int(expires.timestamp()))
+    # cs = SessionCACHE()
+    with get_cache_test() as cs:
+        cs.add(session_entry)
+        cs.commit()
+        cs.refresh(session_entry)
+    return session_entry.__dict__
+
 
 def delete_session(session_id: str, cs: Session):
     session=cs.query(Sessions).filter(Sessions.session_id==session_id).first()
@@ -190,7 +217,7 @@ async def VerifyToken(jwt: str):
     print("idinfo: ", idinfo)
     return idinfo
 
-@router.post("/login")
+# @router.post("/login")
 async def login(request: Request, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
 
     body = await request.body()
@@ -208,6 +235,30 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
 
     response = JSONResponse({"Authenticated_as": user.name})
     session = new_session(user.id, user.email, cs)
+    new_cookie(response, session)
+
+    response.headers["HX-Trigger"] = "ReloadNavbar"
+
+    return response
+
+@router.post("/login")
+async def login_test(request: Request, ds: Session = Depends(get_db)):
+
+    body = await request.body()
+    jwt = dict(urllib.parse.parse_qsl(body.decode('utf-8'))).get('credential')
+
+    idinfo = await VerifyToken(jwt)
+    if not idinfo:
+        print("Error: Failed to validate JWT token")
+        return  Response("Error: Failed to validate JWT token")
+
+    user = await GetOrCreateUser(idinfo, ds)
+    if not user:
+        print("Error: Failed to GetOrCreateUser")
+        return  Response("Error: Failed to GetOrCreateUser for the JWT")
+
+    response = JSONResponse({"Authenticated_as": user.name})
+    session = new_session_test(user.id, user.email)
     new_cookie(response, session)
 
     response.headers["HX-Trigger"] = "ReloadNavbar"
