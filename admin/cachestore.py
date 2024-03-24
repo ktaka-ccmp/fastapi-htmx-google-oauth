@@ -114,13 +114,3 @@ def get_cache_store():
         cs = next(get_cache())
         return SQLCacheStore(cs)
 
-
-def example_route(cs: CacheStore = Depends(get_cache_store)):
-    session_id = "example_session_id" # Normally, you would get this from the request cookies
-    session = cs.get_session(session_id)
-    if session:
-        return {"message": "Session found", "session": session}
-    else:
-        return {"message": "Session not found"}
-
-

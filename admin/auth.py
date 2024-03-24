@@ -1,13 +1,12 @@
-import secrets
 import urllib.parse
 import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, BackgroundTasks, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError, NoResultFound
+from sqlalchemy.exc import SQLAlchemyError
 from data.db import User, UserBase, Sessions
-from data.db import get_db, get_cache, SessionCACHE
+from data.db import get_db
 from admin.user import create as GetOrCreateUser
 
 from typing import Annotated
@@ -319,20 +318,6 @@ async def logout_content(request: Request,
 
     context = {"request": request, "message": "User logged out"}
     return templates.TemplateResponse("content.error.j2", context)
-
-def do_cleanup_sessions(cs: Session):
-    now = int(datetime.now().timestamp())
-    try:
-        cs.begin()
-        expired_sessions = cs.query(Sessions).filter(Sessions.expires <= now).all()
-        for session in expired_sessions:
-            print("Cleaning up expired session: ", session.session_id)
-            cs.delete(session)
-        cs.commit()
-        print("Expired sessions cleaned up successfully.")
-    except SQLAlchemyError as e:
-        cs.rollback()
-        print(f"An error occurred while cleaning up sessions: {e}")
 
 @router.get("/cleanup_sessions")
 async def cleanup_sessions(
