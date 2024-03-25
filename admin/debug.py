@@ -13,7 +13,7 @@ templates = Jinja2Templates(directory='templates')
 
 @router.get("/sessions")
 async def list_sessions(cs: CacheStore = Depends(get_cache_store)):
-    return cs.get_sessions()
+    return cs.list_sessions()
 
 @router.get("/env/")
 async def env():
