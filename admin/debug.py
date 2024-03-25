@@ -3,16 +3,17 @@ from fastapi import APIRouter, HTTPException, Response, Request, Depends, Cookie
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse, HTMLResponse
 from typing import Annotated
-from sqlalchemy.orm import Session
-from data.db import Sessions, UserBase, get_cache
+from data.db import UserBase
 from admin import auth
+
+from admin.cachestore import CacheStore, get_cache_store
 
 router = APIRouter()
 templates = Jinja2Templates(directory='templates')
 
 @router.get("/sessions")
-async def list_sessions(cs: Session = Depends(get_cache)):
-    return cs.query(Sessions).offset(0).limit(100).all()
+async def list_sessions(cs: CacheStore = Depends(get_cache_store)):
+    return cs.get_sessions()
 
 @router.get("/env/")
 async def env():
@@ -23,9 +24,9 @@ async def env():
         }
 
 @router.get("/me")
-async def dump_users_info(request: Request, user: UserBase = Depends(auth.get_current_user), cs: Session = Depends(get_cache)):
+async def dump_users_info(request: Request, user: UserBase = Depends(auth.get_current_user), cs: CacheStore = Depends(get_cache_store)):
     session_id = request.cookies.get("session_id")
-    session = auth.get_session_by_session_id(session_id, cs)
+    session = cs.get_session(session_id)
     try:
         return {"user": user, "session": session}
     except:
@@ -40,9 +41,9 @@ async def debug_headers(request: Request):
 @router.get("/refresh_token")
 def refresh_token(response: Response,
                   session_id: Annotated[str | None, Cookie()] = None,
-                  cs: Session = Depends(get_cache)):
+                  cs: CacheStore = Depends(get_cache_store)):
     # print("session_id: ", session_id)
-    session = auth.get_session_by_session_id(session_id, cs)
+    session = cs.get_session(session_id)
     if not session:
         raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
 
@@ -60,7 +61,7 @@ async def csrf_js_get(request: Request):
 @router.post("/csrf_js")
 async def csrf_js_post(x_csrf_token: Annotated[str | None, Header()] = None,
                  session_id: Annotated[str | None, Cookie()] = None,
-                 cs: Session = Depends(get_cache)):
+                 cs: CacheStore = Depends(get_cache_store)):
     csrf_token = x_csrf_token
     return await csrf_post(session_id, cs, csrf_token)
 
@@ -74,11 +75,11 @@ async def csrf_html_get(request: Request,
 @router.post("/csrf_html")
 async def csrf_html_post(csrf_token: Annotated[str | None, Form()] = None,
                          session_id: Annotated[str | None, Cookie()] = None,
-                         cs: Session = Depends(get_cache)):
+                         cs: CacheStore = Depends(get_cache_store)):
     return await csrf_post(session_id, cs, csrf_token)
 
 async def csrf_post(session_id, cs, csrf_token):
-    session = auth.get_session_by_session_id(session_id, cs)
+    session = cs.get_session(session_id)
     if not session:
         raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
     csrf_token = auth.csrf_verify(csrf_token, session)

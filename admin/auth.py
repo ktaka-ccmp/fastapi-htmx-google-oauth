@@ -1,13 +1,11 @@
-import secrets
 import urllib.parse
 import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, BackgroundTasks, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError, NoResultFound
-from data.db import User, UserBase, Sessions
-from data.db import get_db, get_cache
+from data.db import User, UserBase
+from data.db import get_db
 from admin.user import create as GetOrCreateUser
 
 from typing import Annotated
@@ -17,6 +15,8 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 from config import settings
 
+from admin.cachestore import CacheStore, get_cache_store
+
 from fastapi.templating import Jinja2Templates
 
 router = APIRouter()
@@ -24,20 +24,10 @@ templates = Jinja2Templates(directory='templates')
 
 cookie_scheme = APIKeyCookie(name="session_id", description="Admin session_id is created by create_session.sh")
 
-def get_session_by_session_id(session_id: str, cs: Session):
-    try:
-        session = cs.query(Sessions).filter(Sessions.session_id == session_id).one()
-        return session.__dict__
-    except NoResultFound:
-        return None
-    except SQLAlchemyError as e:
-        print(f"An error occurred while retrieving the session: {e}")
-        return None
-
 def hash_email(email: str):
     return hashlib.sha256(email.encode()).hexdigest()
 
-def mutate_session(response: Response, old_session: dict, cs: Session, immediate: bool = False):
+def mutate_session(response: Response, old_session: dict, cs: CacheStore, immediate: bool = False):
     if not old_session:
         raise HTTPException(status_code=404, detail="Session not found")
     if old_session["email"] == settings.admin_email:
@@ -49,9 +39,9 @@ def mutate_session(response: Response, old_session: dict, cs: Session, immediate
         return old_session
 
     print("Session expires soon in", age_left, ". Mutating the session.")
-    session = new_session(old_session["user_id"], old_session["email"], cs)
+    session = cs.create_session(old_session["user_id"], old_session["email"])
     new_cookie(response, session)
-    delete_session(old_session["session_id"], cs)
+    cs.delete_session(old_session["session_id"])
     return session
 
 def new_cookie(response: Response, session: dict):
@@ -79,34 +69,6 @@ def delete_cookie(response: Response):
                         samesite="Lax", secure=True, max_age=max_age, expires=expires,)
     return response
 
-def new_session(user_id: int, email: str, cs: Session):
-    session_id = secrets.token_urlsafe(64)
-    csrf_token = secrets.token_urlsafe(32)
-    session = get_session_by_session_id(session_id, cs)
-
-    if session:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Duplicate session_id")
-
-    max_age = settings.session_max_age
-    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
-    session_entry=Sessions(session_id=session_id, csrf_token=csrf_token,
-                           user_id=user_id, email=email, expires=int(expires.timestamp()))
-    cs.add(session_entry)
-    cs.commit()
-    cs.refresh(session_entry)
-    return session_entry.__dict__
-
-def delete_session(session_id: str, cs: Session):
-    session=cs.query(Sessions).filter(Sessions.session_id==session_id).first()
-    if not session:
-        print("Session not found: ", session_id)
-        return
-    if session.email == settings.admin_email:
-        return
-    print("delete_session: ", session.__dict__)
-    cs.delete(session)
-    cs.commit()
-
 def csrf_verify(csrf_token: str, session: dict):
     print("### Debug: csrf_verify: ", csrf_token)
     if csrf_token == session['csrf_token']:
@@ -130,20 +92,22 @@ def get_user_by_user_id(user_id: int, ds: Session):
     return user
 
 async def get_current_user(session_id: str = Depends(cookie_scheme),
-                           ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+                           ds: Session = Depends(get_db), cs: CacheStore = Depends(get_cache_store)):
     if not session_id:
         return None
 
-    session = get_session_by_session_id(session_id, cs)
+    session = cs.get_session(session_id)
     if not session:
+        print("No session found for the session_id: ", session_id)
         return None
+        # raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
 
     user_dict = get_user_by_user_id(session["user_id"], ds)
     user=UserBase(**user_dict)
     return user
 
 async def is_authenticated(session_id: str = Depends(cookie_scheme),
-                           ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+                           ds: Session = Depends(get_db), cs: CacheStore = Depends(get_cache_store)):
 
     user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
 
@@ -167,7 +131,7 @@ class RequiresLogin(Exception):
 async def is_authenticated_admin(
                                  session_id: Annotated[str | None, Cookie()] = None,
                                  ds: Session = Depends(get_db),
-                                 cs: Session = Depends(get_cache)
+                                 cs: CacheStore = Depends(get_cache_store)
                                  ):
     user = await get_current_user(session_id=session_id, cs=cs, ds=ds)
     if not user:
@@ -191,7 +155,7 @@ async def VerifyToken(jwt: str):
     return idinfo
 
 @router.post("/login")
-async def login(request: Request, ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+async def login(request: Request, ds: Session = Depends(get_db), cs: CacheStore = Depends(get_cache_store)):
 
     body = await request.body()
     jwt = dict(urllib.parse.parse_qsl(body.decode('utf-8'))).get('credential')
@@ -207,7 +171,7 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
         return  Response("Error: Failed to GetOrCreateUser for the JWT")
 
     response = JSONResponse({"Authenticated_as": user.name})
-    session = new_session(user.id, user.email, cs)
+    session = cs.create_session(user.id, user.email)
     new_cookie(response, session)
 
     response.headers["HX-Trigger"] = "ReloadNavbar"
@@ -218,7 +182,7 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: Session = D
 async def logout(response: Response,
                  session_id: Annotated[str | None, Cookie()] = None,
                  hx_request: Annotated[str | None, Header()] = None,
-                 cs: Session = Depends(get_cache)):
+                 cs: CacheStore = Depends(get_cache_store)):
 
     if not hx_request:
         raise HTTPException(
@@ -228,7 +192,7 @@ async def logout(response: Response,
 
     response = JSONResponse({"message": "user logged out"})
     response.headers["HX-Trigger"] = "ReloadNavbar, LogoutSecretContent"
-    delete_session(session_id, cs)
+    cs.delete_session(session_id)
     delete_cookie(response)
     return response
 
@@ -236,7 +200,7 @@ async def logout(response: Response,
 async def auth_navbar(request: Request,
                       session_id: Annotated[str|None, Cookie()] = None,
                       hx_request: Annotated[str|None, Header()] = None,
-                      ds: Session = Depends(get_db), cs: Session = Depends(get_cache)
+                      ds: Session = Depends(get_db), cs: CacheStore = Depends(get_cache_store)
                       ):
 
     if not hx_request:
@@ -260,7 +224,7 @@ async def auth_navbar(request: Request,
         return templates.TemplateResponse("auth_navbar.logout.j2", context)
 
     print("User not logged-in.")
-    do_cleanup_sessions(cs)
+    cs.cleanup_sessions()
 
     # For unauthenticated users, return the menu.login component.
     client_id = settings.google_oauth2_client_id
@@ -279,7 +243,7 @@ async def auth_navbar(request: Request,
 async def check(response: Response,
                 session_id: Annotated[str|None, Cookie()] = None,
                 hx_request: Annotated[str|None, Header()] = None,
-                ds: Session = Depends(get_db), cs: Session = Depends(get_cache)):
+                ds: Session = Depends(get_db), cs: CacheStore = Depends(get_cache_store)):
 
     if not hx_request:
         raise HTTPException(
@@ -302,7 +266,7 @@ async def refresh_token(response: Response,
                   session_id: Annotated[str | None, Cookie()] = None,
                   x_csrf_token: Annotated[str | None, Header()] = None,
                   x_user_token: Annotated[str | None, Header()] = None,
-                  cs: Session = Depends(get_cache)):
+                  cs: CacheStore = Depends(get_cache_store)):
 
     if not hx_request:
         raise HTTPException(
@@ -312,8 +276,9 @@ async def refresh_token(response: Response,
     if not session_id:
         raise HTTPException(status_code=403, detail="No session_id in the request")
 
-    session = get_session_by_session_id(session_id, cs)
+    session = cs.get_session(session_id)
     if not session:
+        print("No session found for the session_id: ", session_id)
         raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
 
     try:
@@ -356,27 +321,13 @@ async def logout_content(request: Request,
     context = {"request": request, "message": "User logged out"}
     return templates.TemplateResponse("content.error.j2", context)
 
-def do_cleanup_sessions(cs: Session):
-    now = int(datetime.now().timestamp())
-    try:
-        cs.begin()
-        expired_sessions = cs.query(Sessions).filter(Sessions.expires <= now).all()
-        for session in expired_sessions:
-            print("Cleaning up expired session: ", session.session_id)
-            cs.delete(session)
-        cs.commit()
-        print("Expired sessions cleaned up successfully.")
-    except SQLAlchemyError as e:
-        cs.rollback()
-        print(f"An error occurred while cleaning up sessions: {e}")
-
 @router.get("/cleanup_sessions")
 async def cleanup_sessions(
                          background_tasks: BackgroundTasks,
                          session_id: Annotated[str|None, Cookie()] = None,
-                         cs: Session = Depends(get_cache)):
+                         cs: CacheStore = Depends(get_cache_store)):
     if not session_id:
         return {"message": "Session CleanUp not triggered. Please login first."}
 
-    background_tasks.add_task(do_cleanup_sessions, cs)
+    background_tasks.add_task(cs.cleanup_sessions)
     return {"message": "Session CleanUp triggered."}

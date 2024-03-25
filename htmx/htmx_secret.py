@@ -1,5 +1,5 @@
-from typing import Optional, Annotated
-from fastapi import APIRouter, Request, HTTPException, status, Header, Cookie
+from typing import Optional
+from fastapi import APIRouter, Request, HTTPException, status, Header
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from config import settings
