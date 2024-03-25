@@ -4,8 +4,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, BackgroundTasks, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
-from data.db import User, UserBase, Sessions
+from data.db import User, UserBase
 from data.db import get_db
 from admin.user import create as GetOrCreateUser
 
@@ -99,7 +98,9 @@ async def get_current_user(session_id: str = Depends(cookie_scheme),
 
     session = cs.get_session(session_id)
     if not session:
+        print("No session found for the session_id: ", session_id)
         return None
+        # raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
 
     user_dict = get_user_by_user_id(session["user_id"], ds)
     user=UserBase(**user_dict)
@@ -277,6 +278,7 @@ async def refresh_token(response: Response,
 
     session = cs.get_session(session_id)
     if not session:
+        print("No session found for the session_id: ", session_id)
         raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
 
     try:

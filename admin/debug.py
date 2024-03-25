@@ -3,8 +3,7 @@ from fastapi import APIRouter, HTTPException, Response, Request, Depends, Cookie
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse, HTMLResponse
 from typing import Annotated
-from sqlalchemy.orm import Session
-from data.db import Sessions, UserBase, get_cache
+from data.db import UserBase
 from admin import auth
 
 from admin.cachestore import CacheStore, get_cache_store
@@ -13,8 +12,8 @@ router = APIRouter()
 templates = Jinja2Templates(directory='templates')
 
 @router.get("/sessions")
-async def list_sessions(cs: Session = Depends(get_cache)):
-    return cs.query(Sessions).offset(0).limit(100).all()
+async def list_sessions(cs: CacheStore = Depends(get_cache_store)):
+    return cs.get_sessions()
 
 @router.get("/env/")
 async def env():

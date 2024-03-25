@@ -2,22 +2,21 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, Response, status, Depends, Form
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.openapi import docs, utils
-from sqlalchemy.orm import Session
 
-from data import db
 from admin import auth
 from config import settings
+from admin.cachestore import CacheStore, get_cache_store
 
 router = APIRouter()
 
 @router.post("/login")
 def login(response: Response, email: str = Form(...),
-          apikey: str = Form(...), cs: Session = Depends(db.get_cache)):
+          apikey: str = Form(...), cs: CacheStore = Depends(get_cache_store)):
 
     if not apikey or not email:
         return None
 
-    session = auth.get_session_by_session_id(apikey, cs)
+    session = cs.get_session(apikey)
     if not session:
         response = JSONResponse({"Error": "ApiKey not found"})
         response.delete_cookie("session_id")

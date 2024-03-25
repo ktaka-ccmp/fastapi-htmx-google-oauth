@@ -3,7 +3,7 @@ import redis
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 
 from data.db import Sessions, get_cache
@@ -13,6 +13,9 @@ class CacheStore(ABC):
 
     @abstractmethod
     def get_session(self, session_id: str):
+        pass
+
+    def get_sessions(self):
         pass
 
     @abstractmethod
@@ -33,13 +36,24 @@ class SQLCacheStore(CacheStore):
 
     def get_session(self, session_id: str):
         try:
-            session = self.cs.query(Sessions).filter(Sessions.session_id == session_id).one()
-            return session.__dict__
+            session_data = self.cs.query(Sessions).filter(Sessions.session_id == session_id).one()
         except NoResultFound:
             return None
         except SQLAlchemyError as e:
             print(f"An error occurred while retrieving the session: {e}")
             return None
+
+        if session_data:
+            session = session_data.__dict__
+            print("session: ", session)
+            print("session_id: ", session["session_id"])
+            return session
+        else:
+            return None
+
+    def get_sessions(self):
+        sessions = self.cs.query(Sessions).offset(0).limit(100).all()
+        return [session.__dict__ for session in sessions]
 
     def create_session(self, user_id: int, email: str):
         session_id = secrets.token_urlsafe(64)
@@ -61,6 +75,9 @@ class SQLCacheStore(CacheStore):
 
     def delete_session(self, session_id: str):
         session = self.cs.query(Sessions).filter(Sessions.session_id == session_id).first()
+        # session is not dict
+        if session.email == settings.admin_email:
+            return
         if session:
             self.cs.delete(session)
             self.cs.commit()
@@ -84,7 +101,19 @@ class RedisCacheStore(CacheStore):
 
     def get_session(self, session_id: str) -> Optional[dict]:
         session_data = self.redis_client.get(f"session:{session_id}")
-        return json.loads(session_data) if session_data else None
+        session = json.loads(session_data) if session_data else None
+        if session:
+            print("session: ", session)
+            print("session_id: ", session["session_id"])
+        return session
+
+    def get_sessions(self):
+        sessions = []
+        for key in self.redis_client.scan_iter(match="session:*"):
+            session_data = self.redis_client.get(key)
+            session = json.loads(session_data)
+            sessions.append(session)
+        return sessions
 
     def create_session(self, user_id: int, email: str):
         session_id = secrets.token_urlsafe(64)
@@ -101,6 +130,10 @@ class RedisCacheStore(CacheStore):
         return session_data
 
     def delete_session(self, session_id: str):
+        session = self.get_session(session_id)
+        # session is dict
+        if session["email"] == settings.admin_email:
+            return
         self.redis_client.delete(f"session:{session_id}")
 
     def cleanup_sessions(self):
