@@ -69,7 +69,7 @@ Prepare python venv and install packages
 ~~~
 python3 -m venv .venv
 source .venv/bin/activate
-pip install fastapi sqlalchemy uvicorn google-auth requests python-dotenv python-multipart pydantic-settings pydantic[email] jinja2 PyJWT
+pip install fastapi sqlalchemy uvicorn google-auth requests python-dotenv python-multipart pydantic-settings pydantic[email] jinja2 PyJWT redis
 ~~~
 
 Create database
@@ -83,10 +83,14 @@ Edit .env in the directory where main.py exists.
 ~~~
 ORIGIN_SERVER=http://localhost:3000
 GOOGLE_OAUTH2_CLIENT_ID=888888888888-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
+ADMIN_EMAIL=admin@example.com
+SESSION_MAX_AGE=300
+CACHE_STORE=redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ~~~
 
 Run server
 ~~~
 uvicorn main:app  --host 0.0.0.0 --reload
 ~~~
-
