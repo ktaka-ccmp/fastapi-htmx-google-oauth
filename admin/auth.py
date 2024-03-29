@@ -50,24 +50,28 @@ def new_cookie(response: Response, session: dict):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No session provided")
 
     max_age = settings.session_max_age
+    samesite = "Strict" # For normal web pages, it is better to use Strict.
+    # samesite = "Lax" For API server, it is better to use Lax.
     # !!! Warining; It is very important to set httponly=True for the session_id cookie!!!
     response.set_cookie(key="session_id", value=session["session_id"], httponly=True,
-                        samesite="Lax", secure=True, max_age=max_age, expires=session["expires"])
+                        samesite=samesite, secure=True, max_age=max_age, expires=session["expires"])
     response.set_cookie(key="csrf_token", value=session["csrf_token"], httponly=False,
-                        samesite="Lax", secure=True, max_age=max_age, expires=session["expires"])
+                        samesite=samesite, secure=True, max_age=max_age, expires=session["expires"])
     response.set_cookie(key="user_token", value=hash_email(session["email"]), httponly=False,
-                        samesite="Lax", secure=True, max_age=max_age, expires=session["expires"])
+                        samesite=samesite, secure=True, max_age=max_age, expires=session["expires"])
     return response
 
 def delete_cookie(response: Response):
     max_age = 0
     expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
+    samesite = "Strict" # For normal web pages, it is better to use Strict.
+    # samesite = "Lax" For API server, it is better to use Lax.
     response.set_cookie(key="session_id", value="", httponly=True,
-                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+                        samesite=samesite, secure=True, max_age=max_age, expires=expires,)
     response.set_cookie(key="csrf_token", value="", httponly=False,
-                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+                        samesite=samesite, secure=True, max_age=max_age, expires=expires,)
     response.set_cookie(key="user_token", value="", httponly=False,
-                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+                        samesite=samesite, secure=True, max_age=max_age, expires=expires,)
     return response
 
 def csrf_verify(csrf_token: str, session: dict):
