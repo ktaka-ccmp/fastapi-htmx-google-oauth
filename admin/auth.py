@@ -1,5 +1,5 @@
 import urllib.parse
-import hashlib
+import hashlib, hmac, base64
 from datetime import datetime, timezone, timedelta
 from fastapi import Depends, APIRouter, HTTPException, status, Response, Request, BackgroundTasks, Header, Cookie
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -25,7 +25,8 @@ templates = Jinja2Templates(directory='templates')
 cookie_scheme = APIKeyCookie(name="session_id", description="Admin session_id is created by create_session.sh")
 
 def hash_email(email: str):
-    return hashlib.sha256(email.encode()).hexdigest()
+    # return hashlib.sha256(email.encode()).hexdigest()
+    return base64.urlsafe_b64encode(hashlib.sha256(email.encode()).digest()).decode()
 
 def mutate_session(response: Response, old_session: dict, cs: CacheStore, immediate: bool = False):
     if not old_session:
@@ -49,43 +50,45 @@ def new_cookie(response: Response, session: dict):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No session provided")
 
     max_age = settings.session_max_age
+    samesite = "Strict" # For normal web pages, it is better to use Strict.
+    # samesite = "Lax" For API server, it is better to use Lax.
     # !!! Warining; It is very important to set httponly=True for the session_id cookie!!!
     response.set_cookie(key="session_id", value=session["session_id"], httponly=True,
-                        samesite="Lax", secure=True, max_age=max_age, expires=session["expires"])
+                        samesite=samesite, secure=True, max_age=max_age, expires=session["expires"])
     response.set_cookie(key="csrf_token", value=session["csrf_token"], httponly=False,
-                        samesite="Lax", secure=True, max_age=max_age, expires=session["expires"])
+                        samesite=samesite, secure=True, max_age=max_age, expires=session["expires"])
     response.set_cookie(key="user_token", value=hash_email(session["email"]), httponly=False,
-                        samesite="Lax", secure=True, max_age=max_age, expires=session["expires"])
+                        samesite=samesite, secure=True, max_age=max_age, expires=session["expires"])
     return response
 
 def delete_cookie(response: Response):
     max_age = 0
     expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
+    samesite = "Strict" # For normal web pages, it is better to use Strict.
+    # samesite = "Lax" For API server, it is better to use Lax.
     response.set_cookie(key="session_id", value="", httponly=True,
-                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+                        samesite=samesite, secure=True, max_age=max_age, expires=expires,)
     response.set_cookie(key="csrf_token", value="", httponly=False,
-                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+                        samesite=samesite, secure=True, max_age=max_age, expires=expires,)
     response.set_cookie(key="user_token", value="", httponly=False,
-                        samesite="Lax", secure=True, max_age=max_age, expires=expires,)
+                        samesite=samesite, secure=True, max_age=max_age, expires=expires,)
     return response
 
 def csrf_verify(csrf_token: str, session: dict):
     print("### Debug: csrf_verify: ", csrf_token)
-    if csrf_token == session['csrf_token']:
+    if hmac.compare_digest(csrf_token, session['csrf_token']):
+    # if csrf_token == session['csrf_token']:
         return csrf_token
-    elif csrf_token != session['csrf_token']:
-        raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
     else:
-        raise HTTPException(status_code=403, detail="Unexpected things happend.")
+        raise HTTPException(status_code=403, detail="CSRF token: "+csrf_token+" did not match the record.")
 
 def user_verify(user_token: str, session: dict):
     print("### Debug: user_verify: ", user_token)
-    if user_token == hash_email(session["email"]):
+    if hmac.compare_digest(user_token, hash_email(session['email'])):
+    # if user_token == hash_email(session["email"]):
         return user_token
-    elif user_token != hash_email(session["email"]):
-        raise HTTPException(status_code=403, detail="USER token: "+user_token+" did not match the record.")
     else:
-        raise HTTPException(status_code=403, detail="Unexpected things happend.")
+        raise HTTPException(status_code=403, detail="USER token: "+user_token+" did not match the record.")
 
 def get_user_by_user_id(user_id: int, ds: Session):
     user=ds.query(User).filter(User.id==user_id).first().__dict__
@@ -98,7 +101,7 @@ async def get_current_user(session_id: str = Depends(cookie_scheme),
 
     session = cs.get_session(session_id)
     if not session:
-        print("No session found for the session_id: ", session_id)
+        print("get_current_user: No session found for the session_id: ", session_id)
         return None
         # raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
 
@@ -278,7 +281,7 @@ async def refresh_token(response: Response,
 
     session = cs.get_session(session_id)
     if not session:
-        print("No session found for the session_id: ", session_id)
+        print("refresh_token: No session found for the session_id: ", session_id)
         raise HTTPException(status_code=403, detail="No session found for the session_id: "+session_id)
 
     try:
@@ -295,7 +298,7 @@ async def refresh_token(response: Response,
         return response
 
 @router.get("/mutate_user")
-async def refresh_token(
+async def mutate_user(
                   hx_request: Annotated[str | None, Header()] = None,
                   x_user_token: Annotated[str | None, Header()] = None,
                   ):

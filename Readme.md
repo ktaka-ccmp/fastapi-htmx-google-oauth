@@ -69,7 +69,7 @@ Prepare python venv and install packages
 ~~~
 python3 -m venv .venv
 source .venv/bin/activate
-pip install fastapi sqlalchemy uvicorn google-auth requests python-dotenv python-multipart pydantic-settings pydantic[email] jinja2 PyJWT
+pip install fastapi sqlalchemy uvicorn google-auth requests python-dotenv python-multipart pydantic-settings pydantic[email] jinja2 PyJWT redis
 ~~~
 
 Create database
@@ -83,10 +83,72 @@ Edit .env in the directory where main.py exists.
 ~~~
 ORIGIN_SERVER=http://localhost:3000
 GOOGLE_OAUTH2_CLIENT_ID=888888888888-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
+ADMIN_EMAIL=admin@example.com
+SESSION_MAX_AGE=300
+CACHE_STORE=sql
+# CACHE_STORE=redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ~~~
 
 Run server
 ~~~
-uvicorn main:app  --host 0.0.0.0 --reload
+uvicorn main:app  --host 0.0.0.0 --reload --log-config log_config.yaml
 ~~~
 
+## (Optional) Redis for Session Storage
+
+Run redis
+
+```
+docker compose -f data/docker-compose.yml up -d
+```
+
+Edit .env file
+
+```
+# CACHE_STORE=sql
+CACHE_STORE=redis
+```
+
+re-create a session for admin login
+```
+./data/renew_admin_session.sh
+```
+
+restart uvicon
+```
+uvicorn main:app  --host 0.0.0.0 --reload --log-config log_config.yaml
+```
+
+## (Optional) Monitor Session storage contents
+
+### SQLite
+
+```
+watch -n 1 'echo "select * from sessions" | sqlite3 data/cache.db'
+```
+
+### Redis
+
+If the OS has redis-cli, use the following;
+
+```
+watch -n 1  'for k in $(redis-cli keys "*" | xargs) ; do echo -n $k": " ; redis-cli get $k|xargs ; done'
+```
+
+If the OS does not have redis-cli, first exec into the redis docker container,
+
+```
+$ docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED      STATUS      PORTS                                       NAMES
+29a78e16ec02   redis     "docker-entrypoint.s…"   7 days ago   Up 7 days   0.0.0.0:6379->6379/tcp, :::6379->6379/tcp   data-redis-1
+
+$ docker exec -it data-redis-1 bash
+```
+
+then monitor the contents using redis-cli, for example;
+
+```
+while true ; do sleep 1 ;clear; for k in $(redis-cli keys "*" | xargs) ; do echo -n $k": " ; redis-cli get $k|xargs ;done ; done
+```
