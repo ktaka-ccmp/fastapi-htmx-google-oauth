@@ -12,9 +12,11 @@
   </header>
 
   {# Content #}
+  {%block content_section%}
   <div class="container" id="content_section" hx-get="/htmx/{{page}}" hx-target="#content_section" hx-swap="innerHTML"
     hx-trigger="load" hx-history-elt>
   </div>
+  {%endblock%}
 
 </body>
 
