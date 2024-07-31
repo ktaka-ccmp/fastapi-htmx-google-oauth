@@ -157,20 +157,6 @@ async def VerifyToken(jwt: str):
     print("idinfo: ", idinfo)
     return idinfo
 
-def set_nonce_cookie(nonce, response, max_age):
-    samesite = "Strict"
-    expires = datetime.now(timezone.utc) + timedelta(seconds=max_age)
-    response.set_cookie(key="expected_nonce", value=nonce, httponly=True,
-                        samesite=samesite, secure=True, max_age=max_age, expires=expires)
-    return response
-
-def verify_nonce(request, idinfo):
-    expected_nonce = request.cookies.get('expected_nonce')
-    print("### nonce in cookie: ", expected_nonce)
-    print("### nonce in id_token: ", idinfo['nonce'])
-    if not expected_nonce or idinfo['nonce'] != expected_nonce:
-        raise HTTPException(status_code=400, detail="Invalid nonce")
-
 @router.post("/login")
 async def login(request: Request, ds: Session = Depends(get_db), cs: CacheStore = Depends(get_cache_store)):
 
@@ -187,7 +173,6 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: CacheStore 
         raise HTTPException(status_code=400, detail="Invalid nonce")
 
     request.session['expected_nonce'] = None
-    # verify_nonce(request, idinfo)
 
     user = await GetOrCreateUser(idinfo, ds)
     if not user:
@@ -199,7 +184,6 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: CacheStore 
     new_cookie(response, session)
 
     response.headers["HX-Trigger"] = "ReloadNavbar"
-    # response = set_nonce_cookie("", response, 0)
     return response
 
 @router.get("/logout")
@@ -264,7 +248,6 @@ async def auth_navbar(request: Request,
                "icon_url": icon_url, "refresh_token_url": refresh_token_url, "mutate_user_url": mutate_user_url,
                "userToken": "anonymous", "nonce": nonce}
     response = templates.TemplateResponse("auth_navbar.login.j2", context)
-    # response = set_nonce_cookie(nonce, response, 86400)
     return response
 
 @router.get("/check")
