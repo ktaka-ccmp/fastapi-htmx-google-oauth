@@ -4,6 +4,7 @@
         callback: onSignIn,
         ux_mode: "popup",
         use_fedcm_for_prompt: true,
+        nonce: "{{ nonce }}",
     });
 
     google.accounts.id.renderButton(document.getElementById("signInDiv"), {
