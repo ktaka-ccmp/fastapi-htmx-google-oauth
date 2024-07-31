@@ -1,5 +1,17 @@
 <script>
     function onSignIn(response) {
+
+        // Decode the ID token
+        const decodedToken = KJUR.jws.JWS.parse(response.credential);
+        // Check the nonce value
+        const tokenNonce = decodedToken.payloadObj.nonce;
+
+        if (tokenNonce !== '{{ nonce }}') {
+            console.error('Nonce mismatch. Possible replay attack.');
+            return;
+        }
+        console.log("tokenNonce is compared with nonce: ", tokenNonce, '{{ nonce }}');
+
         {# console.log("Request JWT: ", response.credential); #}
         htmx.ajax('POST', '{{ login_url }}',
             { values: { 'credential': response.credential }, swap: 'none' })

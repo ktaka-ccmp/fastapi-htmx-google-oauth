@@ -11,6 +11,12 @@ app = FastAPI(
     docs_url=None, redoc_url=None, openapi_url = None
     )
 
+import os
+from starlette.middleware.sessions import SessionMiddleware
+app.add_middleware(SessionMiddleware, secret_key=os.urandom(24),
+                   https_only=True,same_site="Strict",
+                   max_age=86400,session_cookie="starlette_session")
+
 @app.exception_handler(auth.RequiresLogin)
 async def requires_login(request: Request, _: Exception):
     return RedirectResponse(url="/spa/admin.login")

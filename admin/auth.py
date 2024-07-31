@@ -168,6 +168,12 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: CacheStore 
         print("Error: Failed to validate JWT token")
         return  Response("Error: Failed to validate JWT token")
 
+    expected_nonce = request.session.get('expected_nonce')
+    if not expected_nonce or idinfo['nonce'] != expected_nonce:
+        raise HTTPException(status_code=400, detail="Invalid nonce")
+
+    request.session['expected_nonce'] = None
+
     user = await GetOrCreateUser(idinfo, ds)
     if not user:
         print("Error: Failed to GetOrCreateUser")
@@ -178,7 +184,6 @@ async def login(request: Request, ds: Session = Depends(get_db), cs: CacheStore 
     new_cookie(response, session)
 
     response.headers["HX-Trigger"] = "ReloadNavbar"
-
     return response
 
 @router.get("/logout")
@@ -235,10 +240,13 @@ async def auth_navbar(request: Request,
     icon_url = "/img/icon.png"
     refresh_token_url = "/auth/refresh_token"
     mutate_user_url = "/auth/mutate_user"
+    nonce = base64.urlsafe_b64encode(hashlib.sha256(str(datetime.now()).encode()).digest()).decode()
+
+    request.session['expected_nonce'] = nonce
 
     context = {"request": request, "client_id": client_id, "login_url": login_url,
                "icon_url": icon_url, "refresh_token_url": refresh_token_url, "mutate_user_url": mutate_user_url,
-               "userToken": "anonymous"}
+               "userToken": "anonymous", "nonce": nonce}
     response = templates.TemplateResponse("auth_navbar.login.j2", context)
     return response
 
